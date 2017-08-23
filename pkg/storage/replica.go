@@ -1663,12 +1663,35 @@ func (r *Replica) maybeInitializeRaftGroup(ctx context.Context) {
 	}
 }
 
+type foo struct{}
+
+func (*foo) EnableNetTrace() bool   { return true }
+func (*foo) LightstepToken() string { return "" }
+func (*foo) ZipkinAddr() string     { return "" }
+
 // Send executes a command on this range, dispatching it to the
 // read-only, read-write, or admin execution path as appropriate.
 // ctx should contain the log tags from the store (and up).
 func (r *Replica) Send(
 	ctx context.Context, ba roachpb.BatchRequest,
 ) (*roachpb.BatchResponse, *roachpb.Error) {
+	if r.RangeID == 3 {
+		tr := tracing.NewTracer()
+		tr.Reconfigure((*foo)(nil))
+		var cleanup func()
+		ctx, cleanup = tracing.EnsureContext(ctx, tr, "liveness")
+		defer cleanup()
+
+		//var collect func() string
+		//ctx, collect = testutils.MakeRecordCtx()
+		//defer func() {
+		//	str := collect()
+		//	if timeutil.Since(begin) > 10*time.Second {
+		//		fmt.Println(str)
+		//	}
+		//}()
+	} //
+
 	var br *roachpb.BatchResponse
 
 	if r.leaseholderStats != nil && ba.Header.GatewayNodeID != 0 {
