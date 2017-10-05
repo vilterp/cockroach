@@ -24443,6 +24443,7 @@ export namespace cockroach {
                 dependsOn?: number[];
                 dependedOnBy?: cockroach.sql.sqlbase.TableDescriptor.Reference$Properties[];
                 mutationJobs?: cockroach.sql.sqlbase.TableDescriptor.MutationJob$Properties[];
+                sequence_settings?: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties;
             };
 
             /**
@@ -24610,6 +24611,12 @@ export namespace cockroach {
                  * @type {Array.<cockroach.sql.sqlbase.TableDescriptor.MutationJob$Properties>}
                  */
                 public mutationJobs: cockroach.sql.sqlbase.TableDescriptor.MutationJob$Properties[];
+
+                /**
+                 * TableDescriptor sequence_settings.
+                 * @type {(cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties|null)}
+                 */
+                public sequence_settings: (cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties|null);
 
                 /**
                  * Creates a new TableDescriptor instance using the specified properties.
@@ -25324,6 +25331,119 @@ export namespace cockroach {
 
                     /**
                      * Converts this MutationJob to JSON.
+                     * @returns {Object.<string,*>} JSON object
+                     */
+                    public toJSON(): { [k: string]: any };
+                }
+
+                type SequenceSettings$Properties = {
+                    increment?: number;
+                };
+
+                /**
+                 * Constructs a new SequenceSettings.
+                 * @exports cockroach.sql.sqlbase.TableDescriptor.SequenceSettings
+                 * @constructor
+                 * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties=} [properties] Properties to set
+                 */
+                class SequenceSettings {
+
+                    /**
+                     * Constructs a new SequenceSettings.
+                     * @exports cockroach.sql.sqlbase.TableDescriptor.SequenceSettings
+                     * @constructor
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties=} [properties] Properties to set
+                     */
+                    constructor(properties?: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties);
+
+                    /**
+                     * SequenceSettings increment.
+                     * @type {number}
+                     */
+                    public increment: number;
+
+                    /**
+                     * Creates a new SequenceSettings instance using the specified properties.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties=} [properties] Properties to set
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings instance
+                     */
+                    public static create(properties?: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties): cockroach.sql.sqlbase.TableDescriptor.SequenceSettings;
+
+                    /**
+                     * Encodes the specified SequenceSettings message. Does not implicitly {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.verify|verify} messages.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties} message SequenceSettings message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    public static encode(message: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                    /**
+                     * Encodes the specified SequenceSettings message, length delimited. Does not implicitly {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.verify|verify} messages.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties} message SequenceSettings message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    public static encodeDelimited(message: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                    /**
+                     * Decodes a SequenceSettings message from the specified reader or buffer.
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @param {number} [length] Message length if known beforehand
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): cockroach.sql.sqlbase.TableDescriptor.SequenceSettings;
+
+                    /**
+                     * Decodes a SequenceSettings message from the specified reader or buffer, length delimited.
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): cockroach.sql.sqlbase.TableDescriptor.SequenceSettings;
+
+                    /**
+                     * Verifies a SequenceSettings message.
+                     * @param {Object.<string,*>} message Plain object to verify
+                     * @returns {?string} `null` if valid, otherwise the reason why it is not
+                     */
+                    public static verify(message: { [k: string]: any }): string;
+
+                    /**
+                     * Creates a SequenceSettings message from a plain object. Also converts values to their respective internal types.
+                     * @param {Object.<string,*>} object Plain object
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     */
+                    public static fromObject(object: { [k: string]: any }): cockroach.sql.sqlbase.TableDescriptor.SequenceSettings;
+
+                    /**
+                     * Creates a SequenceSettings message from a plain object. Also converts values to their respective internal types.
+                     * This is an alias of {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.fromObject}.
+                     * @function
+                     * @param {Object.<string,*>} object Plain object
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     */
+                    public static from(object: { [k: string]: any }): cockroach.sql.sqlbase.TableDescriptor.SequenceSettings;
+
+                    /**
+                     * Creates a plain object from a SequenceSettings message. Also converts values to other types if specified.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} message SequenceSettings
+                     * @param {$protobuf.ConversionOptions} [options] Conversion options
+                     * @returns {Object.<string,*>} Plain object
+                     */
+                    public static toObject(message: cockroach.sql.sqlbase.TableDescriptor.SequenceSettings, options?: $protobuf.ConversionOptions): { [k: string]: any };
+
+                    /**
+                     * Creates a plain object from this SequenceSettings message. Also converts values to other types if specified.
+                     * @param {$protobuf.ConversionOptions} [options] Conversion options
+                     * @returns {Object.<string,*>} Plain object
+                     */
+                    public toObject(options?: $protobuf.ConversionOptions): { [k: string]: any };
+
+                    /**
+                     * Converts this SequenceSettings to JSON.
                      * @returns {Object.<string,*>} JSON object
                      */
                     public toJSON(): { [k: string]: any };

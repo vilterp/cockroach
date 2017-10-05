@@ -46144,6 +46144,7 @@ export const cockroach = $root.cockroach = (() => {
                  * @property {Array.<number>} [dependsOn] TableDescriptor dependsOn.
                  * @property {Array.<cockroach.sql.sqlbase.TableDescriptor.Reference$Properties>} [dependedOnBy] TableDescriptor dependedOnBy.
                  * @property {Array.<cockroach.sql.sqlbase.TableDescriptor.MutationJob$Properties>} [mutationJobs] TableDescriptor mutationJobs.
+                 * @property {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties} [sequence_settings] TableDescriptor sequence_settings.
                  */
 
                 /**
@@ -46319,6 +46320,12 @@ export const cockroach = $root.cockroach = (() => {
                 TableDescriptor.prototype.mutationJobs = $util.emptyArray;
 
                 /**
+                 * TableDescriptor sequence_settings.
+                 * @type {(cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties|null)}
+                 */
+                TableDescriptor.prototype.sequence_settings = null;
+
+                /**
                  * Creates a new TableDescriptor instance using the specified properties.
                  * @param {cockroach.sql.sqlbase.TableDescriptor$Properties=} [properties] Properties to set
                  * @returns {cockroach.sql.sqlbase.TableDescriptor} TableDescriptor instance
@@ -46395,6 +46402,8 @@ export const cockroach = $root.cockroach = (() => {
                     if (message.mutationJobs != null && message.mutationJobs.length)
                         for (let i = 0; i < message.mutationJobs.length; ++i)
                             $root.cockroach.sql.sqlbase.TableDescriptor.MutationJob.encode(message.mutationJobs[i], writer.uint32(/* id 27, wireType 2 =*/218).fork()).ldelim();
+                    if (message.sequence_settings != null && message.hasOwnProperty("sequence_settings"))
+                        $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.encode(message.sequence_settings, writer.uint32(/* id 28, wireType 2 =*/226).fork()).ldelim();
                     return writer;
                 };
 
@@ -46520,6 +46529,9 @@ export const cockroach = $root.cockroach = (() => {
                             if (!(message.mutationJobs && message.mutationJobs.length))
                                 message.mutationJobs = [];
                             message.mutationJobs.push($root.cockroach.sql.sqlbase.TableDescriptor.MutationJob.decode(reader, reader.uint32()));
+                            break;
+                        case 28:
+                            message.sequence_settings = $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.decode(reader, reader.uint32());
                             break;
                         default:
                             reader.skipType(tag & 7);
@@ -46691,6 +46703,11 @@ export const cockroach = $root.cockroach = (() => {
                                 return "mutationJobs." + error;
                         }
                     }
+                    if (message.sequence_settings != null && message.hasOwnProperty("sequence_settings")) {
+                        let error = $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.verify(message.sequence_settings);
+                        if (error)
+                            return "sequence_settings." + error;
+                    }
                     return null;
                 };
 
@@ -46846,6 +46863,11 @@ export const cockroach = $root.cockroach = (() => {
                             message.mutationJobs[i] = $root.cockroach.sql.sqlbase.TableDescriptor.MutationJob.fromObject(object.mutationJobs[i]);
                         }
                     }
+                    if (object.sequence_settings != null) {
+                        if (typeof object.sequence_settings !== "object")
+                            throw TypeError(".cockroach.sql.sqlbase.TableDescriptor.sequence_settings: object expected");
+                        message.sequence_settings = $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.fromObject(object.sequence_settings);
+                    }
                     return message;
                 };
 
@@ -46896,6 +46918,7 @@ export const cockroach = $root.cockroach = (() => {
                         object.state = options.enums === String ? "PUBLIC" : 0;
                         object.next_family_id = 0;
                         object.view_query = "";
+                        object.sequence_settings = null;
                     }
                     if (message.name != null && message.hasOwnProperty("name"))
                         object.name = message.name;
@@ -46974,6 +46997,8 @@ export const cockroach = $root.cockroach = (() => {
                         for (let j = 0; j < message.mutationJobs.length; ++j)
                             object.mutationJobs[j] = $root.cockroach.sql.sqlbase.TableDescriptor.MutationJob.toObject(message.mutationJobs[j], options);
                     }
+                    if (message.sequence_settings != null && message.hasOwnProperty("sequence_settings"))
+                        object.sequence_settings = $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.toObject(message.sequence_settings, options);
                     return object;
                 };
 
@@ -48087,6 +48112,180 @@ export const cockroach = $root.cockroach = (() => {
                     };
 
                     return MutationJob;
+                })();
+
+                TableDescriptor.SequenceSettings = (function() {
+
+                    /**
+                     * Properties of a SequenceSettings.
+                     * @typedef cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties
+                     * @type {Object}
+                     * @property {number} [increment] SequenceSettings increment.
+                     */
+
+                    /**
+                     * Constructs a new SequenceSettings.
+                     * @exports cockroach.sql.sqlbase.TableDescriptor.SequenceSettings
+                     * @constructor
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties=} [properties] Properties to set
+                     */
+                    function SequenceSettings(properties) {
+                        if (properties)
+                            for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                                if (properties[keys[i]] != null)
+                                    this[keys[i]] = properties[keys[i]];
+                    }
+
+                    /**
+                     * SequenceSettings increment.
+                     * @type {number}
+                     */
+                    SequenceSettings.prototype.increment = 0;
+
+                    /**
+                     * Creates a new SequenceSettings instance using the specified properties.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties=} [properties] Properties to set
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings instance
+                     */
+                    SequenceSettings.create = function create(properties) {
+                        return new SequenceSettings(properties);
+                    };
+
+                    /**
+                     * Encodes the specified SequenceSettings message. Does not implicitly {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.verify|verify} messages.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties} message SequenceSettings message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    SequenceSettings.encode = function encode(message, writer) {
+                        if (!writer)
+                            writer = $Writer.create();
+                        if (message.increment != null && message.hasOwnProperty("increment"))
+                            writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.increment);
+                        return writer;
+                    };
+
+                    /**
+                     * Encodes the specified SequenceSettings message, length delimited. Does not implicitly {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.verify|verify} messages.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings$Properties} message SequenceSettings message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    SequenceSettings.encodeDelimited = function encodeDelimited(message, writer) {
+                        return this.encode(message, writer).ldelim();
+                    };
+
+                    /**
+                     * Decodes a SequenceSettings message from the specified reader or buffer.
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @param {number} [length] Message length if known beforehand
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    SequenceSettings.decode = function decode(reader, length) {
+                        if (!(reader instanceof $Reader))
+                            reader = $Reader.create(reader);
+                        let end = length === undefined ? reader.len : reader.pos + length, message = new $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings();
+                        while (reader.pos < end) {
+                            let tag = reader.uint32();
+                            switch (tag >>> 3) {
+                            case 1:
+                                message.increment = reader.uint32();
+                                break;
+                            default:
+                                reader.skipType(tag & 7);
+                                break;
+                            }
+                        }
+                        return message;
+                    };
+
+                    /**
+                     * Decodes a SequenceSettings message from the specified reader or buffer, length delimited.
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    SequenceSettings.decodeDelimited = function decodeDelimited(reader) {
+                        if (!(reader instanceof $Reader))
+                            reader = $Reader(reader);
+                        return this.decode(reader, reader.uint32());
+                    };
+
+                    /**
+                     * Verifies a SequenceSettings message.
+                     * @param {Object.<string,*>} message Plain object to verify
+                     * @returns {?string} `null` if valid, otherwise the reason why it is not
+                     */
+                    SequenceSettings.verify = function verify(message) {
+                        if (typeof message !== "object" || message === null)
+                            return "object expected";
+                        if (message.increment != null && message.hasOwnProperty("increment"))
+                            if (!$util.isInteger(message.increment))
+                                return "increment: integer expected";
+                        return null;
+                    };
+
+                    /**
+                     * Creates a SequenceSettings message from a plain object. Also converts values to their respective internal types.
+                     * @param {Object.<string,*>} object Plain object
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     */
+                    SequenceSettings.fromObject = function fromObject(object) {
+                        if (object instanceof $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings)
+                            return object;
+                        let message = new $root.cockroach.sql.sqlbase.TableDescriptor.SequenceSettings();
+                        if (object.increment != null)
+                            message.increment = object.increment >>> 0;
+                        return message;
+                    };
+
+                    /**
+                     * Creates a SequenceSettings message from a plain object. Also converts values to their respective internal types.
+                     * This is an alias of {@link cockroach.sql.sqlbase.TableDescriptor.SequenceSettings.fromObject}.
+                     * @function
+                     * @param {Object.<string,*>} object Plain object
+                     * @returns {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} SequenceSettings
+                     */
+                    SequenceSettings.from = SequenceSettings.fromObject;
+
+                    /**
+                     * Creates a plain object from a SequenceSettings message. Also converts values to other types if specified.
+                     * @param {cockroach.sql.sqlbase.TableDescriptor.SequenceSettings} message SequenceSettings
+                     * @param {$protobuf.ConversionOptions} [options] Conversion options
+                     * @returns {Object.<string,*>} Plain object
+                     */
+                    SequenceSettings.toObject = function toObject(message, options) {
+                        if (!options)
+                            options = {};
+                        let object = {};
+                        if (options.defaults)
+                            object.increment = 0;
+                        if (message.increment != null && message.hasOwnProperty("increment"))
+                            object.increment = message.increment;
+                        return object;
+                    };
+
+                    /**
+                     * Creates a plain object from this SequenceSettings message. Also converts values to other types if specified.
+                     * @param {$protobuf.ConversionOptions} [options] Conversion options
+                     * @returns {Object.<string,*>} Plain object
+                     */
+                    SequenceSettings.prototype.toObject = function toObject(options) {
+                        return this.constructor.toObject(this, options);
+                    };
+
+                    /**
+                     * Converts this SequenceSettings to JSON.
+                     * @returns {Object.<string,*>} JSON object
+                     */
+                    SequenceSettings.prototype.toJSON = function toJSON() {
+                        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                    };
+
+                    return SequenceSettings;
                 })();
 
                 return TableDescriptor;
