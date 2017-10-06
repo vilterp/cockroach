@@ -34,6 +34,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/pkg/errors"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
 )
 
 type createDatabaseNode struct {
@@ -1732,6 +1733,17 @@ func (n *createSequenceNode) Start(params runParams) error {
 	if err = n.p.createDescriptorWithID(params.ctx, key, id, &desc); err != nil {
 		return err
 	}
+
+	// initialize the sequence value
+	seqValueKey := keys.MakeSequenceKey(uint32(id))
+
+	// TODO(vilterp): base this on user-specified start value
+	seqStartValue := &roachpb.Value{}
+	seqStartValue.SetInt(int64(0))
+
+	b := &client.Batch{}
+	b.Put(seqValueKey, seqStartValue)
+	n.p.txn.Run(params.ctx, b)
 
 	if desc.Adding() {
 		n.p.notifySchemaChange(&desc, sqlbase.InvalidMutationID)
