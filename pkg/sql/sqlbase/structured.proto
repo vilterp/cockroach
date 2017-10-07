@@ -603,7 +603,7 @@ message TableDescriptor {
 
   // The presence of sequence_settings indicates that this descriptor is for a sequence
   // (a pseudo-table with one row).
-  optional SequenceSettings sequence_settings = 28 [(gogoproto.nullable) = false];
+  optional SequenceSettings sequence_settings = 28;
 }
 
 // DatabaseDescriptor represents a namespace (aka database) and is stored

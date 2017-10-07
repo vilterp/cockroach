@@ -24,6 +24,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/internal/client"
 	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
@@ -34,7 +35,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/pkg/errors"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 )
 
 type createDatabaseNode struct {
@@ -1287,7 +1287,7 @@ func (n *createSequenceNode) makeSequenceTableDesc(
 ) (sqlbase.TableDescriptor, error) {
 	desc := initTableDescriptor(id, parentID, sequenceName, n.p.txn.OrigTimestamp(), privileges)
 
-	desc.SequenceSettings = sqlbase.TableDescriptor_SequenceSettings{
+	desc.SequenceSettings = &sqlbase.TableDescriptor_SequenceSettings{
 		Increment: 1,
 	}
 
