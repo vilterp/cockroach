@@ -269,9 +269,10 @@ var Builtins = map[string][]Builtin{
 		Builtin{
 			Types:      ArgTypes{{"sequence_name", TypeString}},
 			ReturnType: fixedReturnType(TypeInt),
+			impure:     true,
 			fn: func(evalCtx *EvalContext, args Datums) (Datum, error) {
-				seqName := args[0].String()
-				res, err := evalCtx.Planner.IncrementSequence(evalCtx.Ctx(), seqName)
+				seqName := MustBeDString(args[0])
+				res, err := evalCtx.Planner.IncrementSequence(evalCtx.Ctx(), string(seqName))
 				if err != nil {
 					return nil, err
 				}

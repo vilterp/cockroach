@@ -254,13 +254,14 @@ func (p *planner) QueryRow(
 }
 
 func (p *planner) IncrementSequence(
-	ctx context.Context, seqMame string,
+	ctx context.Context, seqName string,
 ) (int64, error) {
-	tableName := parser.TableName{
-		DatabaseName: parser.Name(p.session.Database),
-		TableName:    parser.Name(seqMame),
+	tableName, err := parser.ParseTableName(seqName)
+	if err != nil {
+		return 0, err
 	}
-	descriptor, err := p.getTableDesc(ctx, &tableName)
+	tableName.DatabaseName = parser.Name(p.session.Database)
+	descriptor, err := p.getTableDesc(ctx, tableName)
 	if err != nil {
 		return 0, err
 	}
