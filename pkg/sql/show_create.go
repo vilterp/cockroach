@@ -74,7 +74,8 @@ func (p *planner) showCreateTable(
 	buf.WriteString(primary)
 	for _, idx := range append(desc.Indexes, desc.PrimaryIndex) {
 		if fk := idx.ForeignKey; fk.IsSet() {
-			fkTable, err := p.session.tables.getTableVersionByID(ctx, p.txn, fk.Table)
+			tos, err := p.session.tables.getTableVersionByID(ctx, p.txn, fk.Table)
+			fkTable := tos.(*sqlbase.TableDescriptor)
 			if err != nil {
 				return "", err
 			}

@@ -226,14 +226,14 @@ func MustGetTableDesc(
 var errTableDropped = errors.New("table is being dropped")
 var errTableAdding = errors.New("table is being added")
 
-func filterTableState(tableDesc *sqlbase.TableDescriptor) error {
+func filterTableState(tableDesc TableOrSequence) error {
 	switch {
 	case tableDesc.Dropped():
 		return errTableDropped
 	case tableDesc.Adding():
 		return errTableAdding
-	case tableDesc.State != sqlbase.TableDescriptor_PUBLIC:
-		return errors.Errorf("table in unknown state: %s", tableDesc.State.String())
+	case tableDesc.GetState() != sqlbase.TableDescriptor_PUBLIC:
+		return errors.Errorf("table in unknown state: %s", tableDesc.GetState().String())
 	}
 	return nil
 }
@@ -260,7 +260,7 @@ type TableCollection struct {
 	// They are released once the transaction using them is complete.
 	// If the transaction gets pushed and the timestamp changes,
 	// the tables are released.
-	tables []*sqlbase.TableDescriptor
+	tables []TableOrSequence
 
 	// Tables modified by the uncommitted transaction affiliated
 	// with this TableCollection. This allows a transaction to see
@@ -270,7 +270,7 @@ type TableCollection struct {
 	// the table. These table descriptors are local to this
 	// TableCollection and invisible to other transactions. A dropped
 	// table is marked dropped.
-	uncommittedTables []*sqlbase.TableDescriptor
+	uncommittedTables []TableOrSequence
 
 	// Same as uncommittedTables applying to databases modified within
 	// an uncommitted transaction.
@@ -307,7 +307,7 @@ func (tc *TableCollection) resetForTxnRetry(ctx context.Context, txn *client.Txn
 // TODO(vivek): Allow cached descriptors for AS OF SYSTEM TIME queries.
 func (tc *TableCollection) getTableVersion(
 	ctx context.Context, txn *client.Txn, vt VirtualTabler, tn *parser.TableName,
-) (*sqlbase.TableDescriptor, error) {
+) (TableOrSequence, error) {
 	if log.V(2) {
 		log.Infof(ctx, "planner acquiring lease on table '%s'", tn)
 	}
@@ -351,7 +351,7 @@ func (tc *TableCollection) getTableVersion(
 	if table, err := tc.getUncommittedTable(dbID, tn); err != nil {
 		return nil, err
 	} else if table != nil {
-		log.VEventf(ctx, 2, "found uncommitted table %d", table.ID)
+		log.VEventf(ctx, 2, "found uncommitted table %d", table.GetID())
 		return table, nil
 	}
 
@@ -360,8 +360,8 @@ func (tc *TableCollection) getTableVersion(
 	// continue to use N to refer to X even if N is renamed during the
 	// transaction.
 	for _, table := range tc.tables {
-		if table.Name == string(tn.TableName) &&
-			table.ParentID == dbID {
+		if table.GetName() == string(tn.TableName) &&
+			table.GetParentID() == dbID {
 			log.VEventf(ctx, 2, "found table in table collection for table '%s'", tn)
 			return table, nil
 		}
@@ -389,7 +389,7 @@ func (tc *TableCollection) getTableVersion(
 // getTableVersionByID is a by-ID variant of getTableVersion (i.e. uses same cache).
 func (tc *TableCollection) getTableVersionByID(
 	ctx context.Context, txn *client.Txn, tableID sqlbase.ID,
-) (*sqlbase.TableDescriptor, error) {
+) (TableOrSequence, error) {
 	log.VEventf(ctx, 2, "planner getting table on table ID %d", tableID)
 
 	if testDisableTableLeases {
@@ -408,7 +408,7 @@ func (tc *TableCollection) getTableVersionByID(
 	tc.resetForTxnRetry(ctx, txn)
 
 	for _, table := range tc.uncommittedTables {
-		if table.ID == tableID {
+		if table.GetID() == tableID {
 			log.VEventf(ctx, 2, "found uncommitted table %d", tableID)
 			if table.Dropped() {
 				return nil, sqlbase.NewUndefinedRelationError(
@@ -422,7 +422,7 @@ func (tc *TableCollection) getTableVersionByID(
 	// First, look to see if we already have the table -- including those
 	// via `getTableVersion`.
 	for _, table := range tc.tables {
-		if table.ID == tableID {
+		if table.GetID() == tableID {
 			log.VEventf(ctx, 2, "found table %d in table cache", tableID)
 			return table, nil
 		}
@@ -440,7 +440,7 @@ func (tc *TableCollection) getTableVersionByID(
 	}
 	tc.timestamp = txn.OrigTimestamp()
 	tc.tables = append(tc.tables, table)
-	log.VEventf(ctx, 2, "added table '%s' to table collection", table.Name)
+	log.VEventf(ctx, 2, "added table '%s' to table collection", table.GetName())
 
 	// If the table we just acquired expires before the txn's deadline, reduce
 	// the deadline.
@@ -466,7 +466,7 @@ func (tc *TableCollection) releaseTables(ctx context.Context) {
 
 func (tc *TableCollection) addUncommittedTable(desc sqlbase.TableDescriptor) {
 	for i, table := range tc.uncommittedTables {
-		if table.ID == desc.ID {
+		if table.GetID() == desc.ID {
 			tc.uncommittedTables[i] = &desc
 			return
 		}
@@ -501,10 +501,10 @@ func (tc *TableCollection) getUncommittedDatabaseID(tn *parser.TableName) (sqlba
 // affiliated with the LeaseCollection.
 func (tc *TableCollection) getUncommittedTable(
 	dbID sqlbase.ID, tn *parser.TableName,
-) (*sqlbase.TableDescriptor, error) {
+) (TableOrSequence, error) {
 	for _, table := range tc.uncommittedTables {
-		if table.Name == string(tn.TableName) &&
-			table.ParentID == dbID {
+		if table.GetName() == string(tn.TableName) &&
+			table.GetParentID() == dbID {
 			if err := filterTableState(table); err != nil {
 				return nil, sqlbase.NewUndefinedRelationError(tn)
 			}

@@ -243,13 +243,13 @@ func (sc *SchemaChanger) maybeWriteResumeSpan(
 
 func (sc *SchemaChanger) getTableVersion(
 	ctx context.Context, txn *client.Txn, tc *TableCollection, version sqlbase.DescriptorVersion,
-) (*sqlbase.TableDescriptor, error) {
+) (TableOrSequence, error) {
 	tableDesc, err := tc.getTableVersionByID(ctx, txn, sc.tableID)
 	if err != nil {
 		return nil, err
 	}
-	if version != tableDesc.Version {
-		return nil, errors.Errorf("table version mismatch: %d, expected=%d", tableDesc.Version, version)
+	if version != tableDesc.GetVersion() {
+		return nil, errors.Errorf("table version mismatch: %d, expected=%d", tableDesc.GetVersion(), version)
 	}
 	return tableDesc, nil
 }
@@ -302,7 +302,7 @@ func (sc *SchemaChanger) truncateIndexes(
 					return err
 				}
 
-				rd, err := sqlbase.MakeRowDeleter(txn, tableDesc, nil, nil, false, alloc)
+				rd, err := sqlbase.MakeRowDeleter(txn, tableDesc.(*sqlbase.TableDescriptor), nil, nil, false, alloc)
 				if err != nil {
 					return err
 				}
@@ -524,7 +524,8 @@ func (sc *SchemaChanger) distBackfill(
 			tc := &TableCollection{leaseMgr: sc.leaseMgr}
 			// Use a leased table descriptor for the backfill.
 			defer tc.releaseTables(ctx)
-			tableDesc, err := sc.getTableVersion(ctx, txn, tc, version)
+			td, err := sc.getTableVersion(ctx, txn, tc, version)
+			tableDesc := td.(*sqlbase.TableDescriptor)
 			if err != nil {
 				return err
 			}
@@ -534,7 +535,8 @@ func (sc *SchemaChanger) distBackfill(
 			if backfillType == columnBackfill {
 				fkTables := sqlbase.TablesNeededForFKs(*tableDesc, sqlbase.CheckUpdates)
 				for k := range fkTables {
-					table, err := tc.getTableVersionByID(ctx, txn, k)
+					td, err := tc.getTableVersionByID(ctx, txn, k)
+					table := td.(*sqlbase.TableDescriptor)
 					if err != nil {
 						return err
 					}

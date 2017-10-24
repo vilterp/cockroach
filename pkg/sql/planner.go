@@ -267,7 +267,7 @@ func (p *planner) IncrementSequence(
 	}
 	if descriptor.SequenceSettings == nil {
 		// TODO(vilterp): construct error somewhere else
-		return 0, fmt.Errorf("%s is not a sequence", seqMame)
+		return 0, fmt.Errorf("%s is not a sequence", seqName)
 	}
 	seqValueKey := keys.MakeSequenceKey(uint32(descriptor.ID))
 	res, err := client.IncrementValRetryable(ctx, p.txn.DB(), seqValueKey, 1)
@@ -331,7 +331,7 @@ func (p *planner) fillFKTableMap(ctx context.Context, m sqlbase.TableLookupsByID
 		if err != nil {
 			return err
 		}
-		m[tableID] = sqlbase.TableLookup{Table: table}
+		m[tableID] = sqlbase.TableLookup{Table: table.(*sqlbase.TableDescriptor)}
 	}
 	return nil
 }

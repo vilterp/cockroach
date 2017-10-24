@@ -325,7 +325,7 @@ CREATE TABLE crdb_internal.leases (
 				dropped := parser.MakeDBool(parser.DBool(ts.mu.dropped))
 
 				for _, state := range ts.mu.active.data {
-					if !userCanSeeDescriptor(&state.TableDescriptor, p.session.User) {
+					if !userCanSeeDescriptor(state.TableOrSequence, p.session.User) {
 						continue
 					}
 
@@ -336,7 +336,7 @@ CREATE TABLE crdb_internal.leases (
 					if err := addRow(
 						nodeID,
 						tableID,
-						parser.NewDString(state.Name),
+						parser.NewDString(state.GetName()),
 						parser.NewDInt(parser.DInt(int64(state.GetParentID()))),
 						&expCopy,
 						dropped,

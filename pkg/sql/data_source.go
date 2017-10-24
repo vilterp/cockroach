@@ -602,7 +602,8 @@ func (p *planner) getTableDesc(
 		return MustGetTableOrViewDesc(
 			ctx, p.txn, p.getVirtualTabler(), tn, false /*allowAdding*/)
 	}
-	return p.session.tables.getTableVersion(ctx, p.txn, p.getVirtualTabler(), tn)
+	desc, err := p.session.tables.getTableVersion(ctx, p.txn, p.getVirtualTabler(), tn)
+	return desc.(*sqlbase.TableDescriptor), err
 }
 
 func (p *planner) getPlanForDesc(

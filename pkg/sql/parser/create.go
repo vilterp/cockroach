@@ -757,7 +757,7 @@ func (node *CreateTable) Format(buf *bytes.Buffer, f FmtFlags) {
 
 type CreateSequence struct {
 	IfNotExists bool
-	Name NormalizableTableName
+	Name        NormalizableTableName
 }
 
 func (node *CreateSequence) Format(buf *bytes.Buffer, f FmtFlags) {

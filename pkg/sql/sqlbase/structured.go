@@ -29,6 +29,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 )
 
 // ID, ColumnID, FamilyID, and IndexID are all uint32, but are each given a
@@ -324,6 +325,10 @@ func (desc *TableDescriptor) TypeName() string {
 // SetName implements the DescriptorProto interface.
 func (desc *TableDescriptor) SetName(name string) {
 	desc.Name = name
+}
+
+func (desc *TableDescriptor) SetModificationTime(timestamp hlc.Timestamp) {
+	desc.ModificationTime = timestamp
 }
 
 // IsEmpty checks if the descriptor is uninitialized.
