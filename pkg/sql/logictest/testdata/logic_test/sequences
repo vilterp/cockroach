@@ -24,6 +24,24 @@ CREATE SEQUENCE zero_test INCREMENT 0
 statement error pgcode 42809 "foo" is not a table
 DROP TABLE foo
 
+# INFORMATION_SCHEMA
+
+query TTTTIIITTTTT colnames
+select * from information_schema.sequences
+----
+sequence_catalog sequence_schema sequence_name   data_type numeric_precision numeric_precision_radix numeric_scale start_value minimum_value maximum_value       increment cycle_option
+def              test            foo             INT       64                2                       0             1           1             9223372036854775807 1         NO
+
+statement ok
+CREATE SEQUENCE bloop INCREMENT -1
+
+query TTTTIIITTTTT colnames
+select * from information_schema.sequences
+----
+sequence_catalog sequence_schema sequence_name   data_type numeric_precision numeric_precision_radix numeric_scale start_value minimum_value         maximum_value       increment cycle_option
+def              test            bloop           INT       64                2                       0              -1         -9223372036854775808  -1                   -1       NO
+def              test            foo             INT       64                2                       0             1           1                     9223372036854775807 1         NO
+
 # DML ERRORS
 
 statement error pgcode XX000 cannot run INSERT on sequence "foo" - sequences are not updateable
