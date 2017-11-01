@@ -243,6 +243,9 @@ var (
 	// TimeseriesPrefix is the key prefix for all timeseries data.
 	TimeseriesPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("tsd")))
 
+	// SequencesPrefix is the key prefix for sequence values.
+	SequencesPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("seq")))
+
 	// TableDataMin is the start of the range of table data keys.
 	TableDataMin = roachpb.Key(encoding.EncodeVarintAscending(nil, 0))
 	// TableDataMin is the end of the range of table data keys.

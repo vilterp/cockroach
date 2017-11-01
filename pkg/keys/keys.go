@@ -617,7 +617,7 @@ func MakeFamilyKey(key []byte, famID uint32) []byte {
 
 // MakeSequenceKey returns the key used to store the value of a sequence.
 func MakeSequenceKey(tableID uint32) []byte {
-	return makeKey(MakeTablePrefix(tableID), roachpb.RKey("SequenceValue"))
+	return makeKey(SequencesPrefix, encoding.EncodeVarintAscending(nil, int64(tableID)))
 }
 
 // GetRowPrefixLength returns the length of the row prefix of the key. A table

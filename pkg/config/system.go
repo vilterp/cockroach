@@ -244,6 +244,8 @@ var staticSplits = []roachpb.RKey{
 	roachpb.RKey(keys.NodeLivenessKeyMax),           // end of node liveness span
 	roachpb.RKey(keys.TimeseriesPrefix),             // start of timeseries span
 	roachpb.RKey(keys.TimeseriesPrefix.PrefixEnd()), // end of timeseries span
+	roachpb.RKey(keys.SequencesPrefix),              // start of sequence values
+	roachpb.RKey(keys.SequencesPrefix.PrefixEnd()),  // end of sequence values
 	roachpb.RKey(keys.TableDataMin),                 // end of system ranges / start of system config tables
 }
 
