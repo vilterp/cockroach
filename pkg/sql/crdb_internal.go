@@ -1328,7 +1328,7 @@ CREATE TABLE crdb_internal.ranges (
   database     STRING NOT NULL,
   "table"      STRING NOT NULL,
   "index"      STRING NOT NULL,
-  replicas     INT[] NOT NULL,
+  replicas     JSONB NOT NULL,
   lease_holder INT NOT NULL
 )
 `,
@@ -1370,12 +1370,19 @@ CREATE TABLE crdb_internal.ranges (
 			if err := r.ValueProto(&desc); err != nil {
 				return err
 			}
-			arr := tree.NewDArray(types.Int)
-			for _, replica := range desc.Replicas {
-				if err := arr.Append(tree.NewDInt(tree.DInt(replica.StoreID))); err != nil {
-					return err
+			replicas := make([]interface{}, len(desc.Replicas))
+			for replicaIdx, replica := range desc.Replicas {
+				replicas[replicaIdx] = map[string]interface{}{
+					"NodeID":    int(replica.NodeID),
+					"StoreID":   int(replica.StoreID),
+					"ReplicaID": int(replica.ReplicaID),
 				}
 			}
+			replicasArr, err := tree.MakeDJSON(replicas)
+			if err != nil {
+				return err
+			}
+
 			var dbName, tableName, indexName string
 			if _, id, err := keys.DecodeTablePrefix(desc.StartKey.AsRawKey()); err == nil {
 				parent := parents[id]
@@ -1402,7 +1409,7 @@ CREATE TABLE crdb_internal.ranges (
 			if err := p.txn.Run(ctx, b); err != nil {
 				return errors.Wrap(err, "error getting lease info")
 			}
-			resp := b.RawResponse().Responses[0].GetInner().(*roachpb.LeaseInfoResponse)
+			leaseInfoResp := b.RawResponse().Responses[0].GetInner().(*roachpb.LeaseInfoResponse)
 
 			if err := addRow(
 				tree.NewDInt(tree.DInt(desc.RangeID)),
@@ -1413,8 +1420,8 @@ CREATE TABLE crdb_internal.ranges (
 				tree.NewDString(dbName),
 				tree.NewDString(tableName),
 				tree.NewDString(indexName),
-				arr,
-				tree.NewDInt(tree.DInt(resp.Lease.Replica.StoreID)),
+				replicasArr,
+				tree.NewDInt(tree.DInt(leaseInfoResp.Lease.Replica.StoreID)),
 			); err != nil {
 				return err
 			}
