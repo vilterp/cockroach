@@ -1424,7 +1424,7 @@ CREATE TABLE crdb_internal.ranges (
 				tree.NewDString(tableName),
 				tree.NewDString(indexName),
 				replicasArr,
-				tree.NewDInt(tree.DInt(leaseInfoResp.Lease.Replica.StoreID)),
+				tree.NewDInt(tree.DInt(leaseInfoResp.Lease.Replica.ReplicaID)),
 			); err != nil {
 				return err
 			}
