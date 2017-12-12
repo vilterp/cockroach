@@ -80,6 +80,9 @@ CREATE TABLE foo (k BYTES PRIMARY KEY, v BYTES)
 statement error pgcode 22023 INCREMENT must not be zero
 CREATE SEQUENCE zero_test INCREMENT 0
 
+statement ok
+CREATE SEQUENCE high_minvalue_test MINVALUE 5
+
 # Test unimplemented syntax.
 statement error pq: unimplemented at or near "EOF"
 CREATE SEQUENCE err_test AS INT2
@@ -287,6 +290,20 @@ SELECT lastval()
 ----
 11
 
+statement ok
+CREATE SEQUENCE setval_bounds_test MINVALUE 5 MAXVALUE 10
+
+query I
+SELECT nextval('setval_bounds_test')
+----
+5
+
+statement error pgcode 22003 pq: setval\(\): value 11 is out of bounds for sequence "setval_bounds_test" \(5\.\.10\)
+SELECT setval('setval_bounds_test', 11)
+
+statement error pgcode 22003 pq: setval\(\): value 0 is out of bounds for sequence "setval_bounds_test" \(5\.\.10\)
+SELECT setval('setval_bounds_test', 0)
+
 # nextval fails with nonexistent sequences.
 
 statement error pgcode 42P01 relation "nonexistent_seq" does not exist
@@ -326,6 +343,96 @@ SELECT nextval('downward_limit_test')
 
 statement error pgcode 2200H pq: nextval\(\): reached minimum value of sequence "downward_limit_test" \(-10\)
 SELECT nextval('downward_limit_test')
+
+# behavior when CYCLE is on
+
+statement ok
+CREATE SEQUENCE cycle_test START 1 MAXVALUE 2 CYCLE
+
+query I
+SELECT nextval('cycle_test')
+----
+1
+
+query I
+SELECT nextval('cycle_test')
+----
+2
+
+query I
+SELECT nextval('cycle_test')
+----
+1
+
+query I
+SELECT nextval('cycle_test')
+----
+2
+
+# downward cycle
+
+statement ok
+CREATE SEQUENCE downward_cycle_test INCREMENT BY -1 START -1 MINVALUE -2 CYCLE
+
+query I
+SELECT nextval('downward_cycle_test')
+----
+-1
+
+query I
+SELECT nextval('downward_cycle_test')
+----
+-2
+
+query I
+SELECT nextval('downward_cycle_test')
+----
+-1
+
+query I
+SELECT nextval('downward_cycle_test')
+----
+-2
+
+# Verify behavior when the sequence hits math.MaxInt64
+
+statement ok
+CREATE SEQUENCE rollover_test START WITH 9223372036854775807
+
+query I
+SELECT nextval('rollover_test')
+----
+9223372036854775807
+
+statement error pq: nextval\(\): reached maximum value of sequence "rollover_test" \(9223372036854775807\)
+SELECT nextval('rollover_test')
+
+# Try again; still doesn't work.
+statement error pq: nextval\(\): reached maximum value of sequence "rollover_test" \(9223372036854775807\)
+SELECT nextval('rollover_test')
+
+# If CYCLE option set, wrap around as normal.
+
+statement ok
+CREATE SEQUENCE rollover_cycle_test CYCLE
+
+statement ok
+SELECT setval('rollover_cycle_test', 9223372036854775806)
+
+query I
+SELECT nextval('rollover_cycle_test')
+----
+9223372036854775807
+
+query I
+SELECT nextval('rollover_cycle_test')
+----
+1
+
+query I
+SELECT nextval('rollover_cycle_test')
+----
+2
 
 # USE WITH TABLES
 
