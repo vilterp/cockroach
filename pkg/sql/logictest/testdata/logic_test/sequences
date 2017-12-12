@@ -434,6 +434,8 @@ SELECT nextval('rollover_cycle_test')
 ----
 2
 
+# TODO(vilterp): Verify bounds checking behavior of setval()
+
 # USE WITH TABLES
 
 # You can use a sequence in a DEFAULT expression to create an auto-incrementing primary key.
