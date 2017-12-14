@@ -224,7 +224,7 @@ class NodeGraphs extends React.Component<NodeGraphsProps, {}> {
           </div>
         </div>
       </section>
-      <DetailsTooltip />
+      <DetailsTooltip nodeSources={nodeSources} />
     </div>;
   }
 }
