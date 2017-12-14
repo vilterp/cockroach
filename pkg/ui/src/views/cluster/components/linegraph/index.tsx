@@ -174,7 +174,7 @@ export class LineGraph extends React.Component<LineGraphProps, {}> {
       let thisChart = false;
       if (currentlyHovering) {
         hoverTime = this.props.hoverState.hoverTime;
-        thisChart = hoverChart !== this.props.chartKey;
+        thisChart = hoverChart === this.props.chartKey;
       }
 
       ConfigureLineChart(
