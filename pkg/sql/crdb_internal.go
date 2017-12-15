@@ -564,22 +564,23 @@ CREATE TABLE crdb_internal.node_statement_statistics (
 var crdbInternalSessionTraceTable = virtualSchemaTable{
 	schema: `
 CREATE TABLE crdb_internal.session_trace (
-  txn_idx     INT NOT NULL,        -- The transaction's 0-based index, among all
-                                   -- transactions that have been traced.
-                                   -- Only filled for the first log message in a
-                                   -- transaction's top-level span.
-  span_idx    INT NOT NULL,        -- The span's index.
-  message_idx INT NOT NULL,        -- The message's index within its span.
-  timestamp   TIMESTAMPTZ NOT NULL,-- The message's timestamp.
-  duration    INTERVAL,            -- The span's duration. Set only on the first
-                                   -- (dummy) message on a span.
-                                   -- NULL if the span was not finished at the time
-                                   -- the trace has been collected.
-  operation   STRING NULL,         -- The span's operation. Set only on
-                                   -- the first (dummy) message in a span.
-  loc         STRING NOT NULL,     -- The file name / line number prefix, if any.
-  tag         STRING NOT NULL,     -- The logging tag, if any.
-  message     STRING NOT NULL      -- The logged message.
+  txn_idx         INT NOT NULL,         -- The transaction's 0-based index, among all
+                                        -- transactions that have been traced.
+                                        -- Only filled for the first log message in a
+                                        -- transaction's top-level span.
+  span_idx        INT NOT NULL,         -- The span's index.
+  parent_span_idx INT,                  -- Index of the parent's span.
+  message_idx     INT NOT NULL,         -- The message's index within its span.
+  timestamp       TIMESTAMPTZ NOT NULL, -- The message's timestamp.
+  duration        INTERVAL,             -- The span's duration. Set only on the first
+                                        -- (dummy) message on a span.
+                                        -- NULL if the span was not finished at the time
+                                        -- the trace has been collected.
+  operation   STRING NULL,              -- The span's operation. Set only on
+                                        -- the first (dummy) message in a span.
+  loc         STRING NOT NULL,          -- The file name / line number prefix, if any.
+  tag         STRING NOT NULL,          -- The logging tag, if any.
+  message     STRING NOT NULL           -- The logged message.
 );
 `,
 	populate: func(ctx context.Context, p *planner, _ string, addRow func(...tree.Datum) error) error {

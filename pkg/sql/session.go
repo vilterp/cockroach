@@ -1565,7 +1565,7 @@ func extractMsgFromRecord(rec tracing.RecordedSpan_LogRecord) string {
 // - location
 // - tag
 // - message
-type traceRow [9]tree.Datum
+type traceRow [10]tree.Datum
 
 // A regular expression to split log messages.
 // It has three parts:
@@ -1672,9 +1672,17 @@ func (st *SessionTracing) generateSessionTraceVTable() ([]traceRow, error) {
 			return nil, fmt.Errorf("unable to split trace message: %q", lrr.msg)
 		}
 
+		var parentSpanIdx tree.Datum
+		if lrr.parentSpanIdx != nil {
+			parentSpanIdx = tree.NewDInt(tree.DInt(*lrr.parentSpanIdx))
+		} else {
+			parentSpanIdx = tree.DNull
+		}
+
 		row := traceRow{
 			tree.NewDInt(tree.DInt(lrr.span.txnIdx)),              // txn_idx
 			tree.NewDInt(tree.DInt(lrr.span.index)),               // span_idx
+			parentSpanIdx,                                         // parent_span_idx
 			tree.NewDInt(tree.DInt(lrr.index)),                    // message_idx
 			tree.MakeDTimestampTZ(lrr.timestamp, time.Nanosecond), // timestamp
 			dur,       // duration
@@ -1728,10 +1736,11 @@ func getMessagesForSubtrace(
 	// the start time and duration of span.
 	allLogs = append(allLogs,
 		logRecordRow{
-			timestamp: span.StartTime,
-			msg:       fmt.Sprintf(spanStartMsgTemplate, span.Operation),
-			span:      span,
-			index:     0,
+			timestamp:     span.StartTime,
+			msg:           fmt.Sprintf(spanStartMsgTemplate, span.Operation),
+			span:          span,
+			parentSpanIdx: &span.index,
+			index:         0,
 		})
 
 	seenSpans[span.SpanID] = struct{}{}
@@ -1776,9 +1785,10 @@ func getMessagesForSubtrace(
 // logRecordRow is used to temporarily hold on to log messages and their
 // metadata while flattening a trace.
 type logRecordRow struct {
-	timestamp time.Time
-	msg       string
-	span      spanWithIndex
+	timestamp     time.Time
+	msg           string
+	span          spanWithIndex
+	parentSpanIdx *int
 	// index of the log message within its span.
 	index int
 }
