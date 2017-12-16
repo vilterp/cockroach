@@ -157,6 +157,18 @@ class TraceView extends Component<TraceViewProps, {}> {
               >
                 {label}
               </text>
+              <g>
+                {span.log.map((logEntry, logIdx) => (
+                  <circle
+                    key={logIdx}
+                    cx={scale(FixLong(logEntry.age_ns).toNumber())}
+                    cy={idx * HEIGHT_PLUS_SPACE + 20}
+                    r={3}
+                    fill={"white"}
+                    stroke={"black"}
+                  />
+                ))}
+              </g>
             </g>
           );
         })}
