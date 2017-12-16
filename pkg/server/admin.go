@@ -1635,10 +1635,10 @@ type traceRow struct {
 	parentSpanIdx *int64
 	//timestamp     *time.Time
 	//duration      duration.Duration
-	timestamp string
-	duration  string
-	operation string
-	message   string
+	ageNS      int64
+	durationNS int64
+	operation  string
+	message    string
 }
 
 func (s *adminServer) Trace(
@@ -1652,12 +1652,20 @@ func (s *adminServer) Trace(
 	txnIdx, err := strconv.ParseInt(req.TxnIdx, 10, 64)
 	qargs.SetValue(`1`, tree.NewDInt(tree.DInt(txnIdx)))
 
-	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(
-		session,
-		"SELECT * FROM traces.traces WHERE txn_idx = $1",
-		&qargs,
-		1,
-	)
+	query := `
+		SELECT
+			txn_idx,
+			span_idx,
+			parent_span_idx,
+			timestamp - first_value(timestamp) OVER (ORDER BY timestamp) AS age,
+			duration,
+			operation,
+			message
+		FROM traces.traces
+		WHERE txn_idx = $1
+	`
+
+	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, query, &qargs, 1)
 	if err != nil {
 		return nil, s.serverError(err)
 	}
@@ -1673,25 +1681,30 @@ func (s *adminServer) Trace(
 			parentSpanIdx = &asInt64
 		}
 
-		operationStr, ok := tree.AsDString(row[6])
+		operationStr, ok := tree.AsDString(row[5])
 		var operation string
 		if ok {
 			operation = string(operationStr)
 		}
 
 		var dur duration.Duration
-		if dInterval, ok := row[5].(*tree.DInterval); ok {
+		if dInterval, ok := row[4].(*tree.DInterval); ok {
 			dur = dInterval.Duration
+		}
+
+		var age duration.Duration
+		if aInterval, ok := row[3].(*tree.DInterval); ok {
+			age = aInterval.Duration
 		}
 
 		rows = append(rows, traceRow{
 			txnIdx:        int64(tree.MustBeDInt(row[0])),
 			spanIdx:       int64(tree.MustBeDInt(row[1])),
 			parentSpanIdx: parentSpanIdx,
-			timestamp:     row[4].String(), // TODO(vilterp): get this
-			duration:      dur.String(),
+			ageNS:         age.Nanos,
+			durationNS:    dur.Nanos,
 			operation:     operation,
-			message:       string(tree.MustBeDString(row[9])),
+			message:       string(tree.MustBeDString(row[6])),
 		})
 	}
 
@@ -1707,10 +1720,11 @@ func getSpan(
 	txnIdx int64, rows []traceRow,
 ) (span *serverpb.TraceResponse_Span, length int) {
 	span = &serverpb.TraceResponse_Span{
-		Log:       make([]*serverpb.TraceResponse_LogMessage, 0),
-		Duration:  rows[0].duration,
-		Timestamp: rows[0].timestamp,
-		Operation: rows[0].operation,
+		Idx:        rows[0].spanIdx,
+		Log:        make([]*serverpb.TraceResponse_LogMessage, 0),
+		AgeNs:      rows[0].ageNS,
+		DurationNs: rows[0].durationNS,
+		Operation:  rows[0].operation,
 	}
 	spanIdx := rows[0].spanIdx
 	// get log rows for this span
@@ -1719,8 +1733,8 @@ func getSpan(
 			// Exclude SPAN START messages.
 			if row.parentSpanIdx == nil {
 				span.Log = append(span.Log, &serverpb.TraceResponse_LogMessage{
-					Message:   row.message,
-					Timestamp: row.timestamp,
+					Message: row.message,
+					AgeNs:   row.ageNS,
 				})
 			}
 			length++

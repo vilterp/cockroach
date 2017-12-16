@@ -77,8 +77,10 @@ export type RangeLogResponseMessage =
 export type CommandQueueRequestMessage = protos.cockroach.server.serverpb.CommandQueueRequest;
 export type CommandQueueResponseMessage = protos.cockroach.server.serverpb.CommandQueueResponse;
 
-export type TracesIndexRequestMessage = protos.cockroach.server.serverpb.TracesIndexRequest;
 export type TracesIndexResponseMessage = protos.cockroach.server.serverpb.TracesIndexResponse;
+
+export type TraceRequestMessage = protos.cockroach.server.serverpb.TraceRequest;
+export type TraceResponseMessage = protos.cockroach.server.serverpb.TraceResponse;
 
 // API constants
 
@@ -291,4 +293,8 @@ export function getCommandQueue(req: CommandQueueRequestMessage, timeout?: momen
 
 export function getTracesIndex(timeout?: moment.Duration): Promise<TracesIndexResponseMessage> {
   return timeoutFetch(serverpb.TracesIndexResponse, `${API_PREFIX}/traces`, null, timeout);
+}
+
+export function getTrace(req: TraceRequestMessage, timeout?: moment.Duration): Promise<TraceResponseMessage> {
+  return timeoutFetch(serverpb.TraceResponse, `${API_PREFIX}/traces/${req.txn_idx}`, null, timeout);
 }

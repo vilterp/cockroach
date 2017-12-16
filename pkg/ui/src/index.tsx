@@ -20,7 +20,7 @@ import { Provider } from "react-redux";
 import { Router, Route, IndexRoute, IndexRedirect } from "react-router";
 
 import {
-  tableNameAttr, databaseNameAttr, nodeIDAttr, dashboardNameAttr, rangeIDAttr,
+  tableNameAttr, databaseNameAttr, nodeIDAttr, dashboardNameAttr, rangeIDAttr, traceTxnIdxAttr,
 } from "src/util/constants";
 
 import "src/redux/analytics";
@@ -50,7 +50,10 @@ import Certificates from "src/views/reports/containers/certificates";
 import Range from "src/views/reports/containers/range";
 import CommandQueue from "src/views/reports/containers/commandQueue";
 import TracesIndex from "src/views/reports/containers/traces";
+import Trace from "src/views/reports/containers/traces/trace";
 import Debug from "src/views/reports/containers/debug";
+
+import NotFound from "src/views/app/components/notFound";
 
 import { alertDataSync } from "src/redux/alerts";
 
@@ -110,8 +113,10 @@ ReactDOM.render(
           <Route path={`range/:${rangeIDAttr}`} component={ Range } />
           <Route path={`range/:${rangeIDAttr}/cmdqueue`} component={ CommandQueue } />
           <Route path={`traces`} component={ TracesIndex } />
+          <Route path={`traces/:${traceTxnIdxAttr}`} component={ Trace } />
         </Route>
         { visualizationRoutes() }
+        <Route path="*" component={ NotFound } />
       </Route>
     </Router>
   </Provider>,

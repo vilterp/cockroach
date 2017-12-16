@@ -5,3 +5,4 @@ export const nodeIDAttr = "node_id";
 export const nodeQueryString = "node";
 export const rangeIDAttr = "range_id";
 export const tableNameAttr = "table_name";
+export const traceTxnIdxAttr = "txn_idx";

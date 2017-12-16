@@ -505,21 +505,23 @@ message TraceResponse {
 
   message LogMessage {
     // TODO(vilterp): use google.protobuf.Timestamp
-    string timestamp = 1;
+    int64 age_ns = 1;
     string message = 2;
   }
 
   message Span {
-    string operation = 1;
+    int64 idx = 1;
+    string operation = 2;
     // TODO(vilterp): use google.protobuf.{Timestamp, Duration}
-    string timestamp = 2;
-    string duration = 3;
-    repeated LogMessage log = 4;
-    repeated Span child_spans = 5;
+    int64 age_ns = 3;
+    int64 duration_ns = 4;
+    repeated LogMessage log = 5;
+    repeated Span child_spans = 6;
   }
 
   int64 txn_idx = 1;
-  Span root_span = 2;
+  google.protobuf.Timestamp start_time = 2;
+  Span root_span = 3;
 }
 
 // QueryPlanResponse contains the query plans for a SQL string (currently only
