@@ -1641,13 +1641,23 @@ type traceRow struct {
 	message   string
 }
 
-func (s *adminServer) Traces(
-	ctx context.Context, req *serverpb.TracesRequest,
-) (*serverpb.TracesResponse, error) {
+func (s *adminServer) Trace(
+	ctx context.Context, req *serverpb.TraceRequest,
+) (*serverpb.TraceResponse, error) {
 	args := sql.SessionArgs{User: s.getUser(req)}
 	ctx, session := s.NewContextAndSessionForRPC(ctx, args)
 	defer session.Finish(s.server.sqlExecutor)
-	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, "SELECT * FROM traces.traces", nil, 1)
+
+	qargs := tree.MakePlaceholderInfo()
+	txnIdx, err := strconv.ParseInt(req.TxnIdx, 10, 64)
+	qargs.SetValue(`1`, tree.NewDInt(tree.DInt(txnIdx)))
+
+	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(
+		session,
+		"SELECT * FROM traces.traces WHERE txn_idx = $1",
+		&qargs,
+		1,
+	)
 	if err != nil {
 		return nil, s.serverError(err)
 	}
@@ -1685,46 +1695,30 @@ func (s *adminServer) Traces(
 		})
 	}
 
-	// build trees
-	var txns []*serverpb.TracesResponse_TxnTrace
-	idx := 0
-	for idx < len(rows) {
-		nextTxn, length := getTxn(rows[idx:])
-		txns = append(txns, nextTxn)
-		idx += length + 1
-	}
+	span, _ := getSpan(txnIdx, rows)
 
-	return &serverpb.TracesResponse{
-		TransactionTraces: txns,
+	return &serverpb.TraceResponse{
+		TxnIdx:   txnIdx,
+		RootSpan: span,
 	}, nil
 }
 
-func getTxn(rows []traceRow) (txn *serverpb.TracesResponse_TxnTrace, length int) {
-	txn = &serverpb.TracesResponse_TxnTrace{
-		TxnIdx: rows[0].txnIdx,
-	}
-	rootSpan, length := getSpan(txn, rows)
-	txn.RootSpan = rootSpan
-	return txn, length
-}
-
 func getSpan(
-	txn *serverpb.TracesResponse_TxnTrace, rows []traceRow,
-) (span *serverpb.TracesResponse_Span, length int) {
-	span = &serverpb.TracesResponse_Span{
-		Log:       make([]*serverpb.TracesResponse_LogMessage, 0),
+	txnIdx int64, rows []traceRow,
+) (span *serverpb.TraceResponse_Span, length int) {
+	span = &serverpb.TraceResponse_Span{
+		Log:       make([]*serverpb.TraceResponse_LogMessage, 0),
 		Duration:  rows[0].duration,
 		Timestamp: rows[0].timestamp,
 		Operation: rows[0].operation,
 	}
-	txnIdx := txn.TxnIdx
 	spanIdx := rows[0].spanIdx
 	// get log rows for this span
 	for _, row := range rows {
 		if row.txnIdx == txnIdx && row.spanIdx == spanIdx {
 			// Exclude SPAN START messages.
 			if row.parentSpanIdx == nil {
-				span.Log = append(span.Log, &serverpb.TracesResponse_LogMessage{
+				span.Log = append(span.Log, &serverpb.TraceResponse_LogMessage{
 					Message:   row.message,
 					Timestamp: row.timestamp,
 				})
@@ -1734,14 +1728,11 @@ func getSpan(
 	}
 	// get child spans for this span
 	for idx, row := range rows {
-		parentSpanIdx := int64(-1)
-		if row.parentSpanIdx != nil {
-			parentSpanIdx = *row.parentSpanIdx
-		}
-		fmt.Printf("txnIdx: %d, spanidx: %d, rowParent: %d, row: %+v\n", txnIdx, spanIdx, parentSpanIdx, row)
-		if row.txnIdx == txnIdx && row.spanIdx != spanIdx && row.parentSpanIdx != nil && *row.parentSpanIdx == spanIdx {
-			fmt.Println("\tmade it")
-			childSpan, newLen := getSpan(txn, rows[idx:])
+		if row.txnIdx == txnIdx &&
+			row.spanIdx != spanIdx &&
+			row.parentSpanIdx != nil &&
+			*row.parentSpanIdx == spanIdx {
+			childSpan, newLen := getSpan(txnIdx, rows[idx:])
 			if idx+newLen > length {
 				length = idx + newLen
 			}
@@ -1749,4 +1740,31 @@ func getSpan(
 		}
 	}
 	return span, length
+}
+
+func (s *adminServer) TracesIndex(
+	ctx context.Context, req *serverpb.TracesIndexRequest,
+) (*serverpb.TracesIndexResponse, error) {
+	args := sql.SessionArgs{User: s.getUser(req)}
+	ctx, session := s.NewContextAndSessionForRPC(ctx, args)
+	defer session.Finish(s.server.sqlExecutor)
+
+	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(
+		session, "SELECT DISTINCT txn_idx FROM traces.traces", nil, 1,
+	)
+	if err != nil {
+		return nil, s.serverError(err)
+	}
+	defer r.Close(ctx)
+
+	var txnIdxs []int64
+	for i, nRows := 0, r.ResultList[0].Rows.Len(); i < nRows; i++ {
+		row := r.ResultList[0].Rows.At(i)
+		txnId := tree.MustBeDInt(row[0])
+		txnIdxs = append(txnIdxs, int64(txnId))
+	}
+
+	return &serverpb.TracesIndexResponse{
+		TxnIdxs: txnIdxs,
+	}, nil
 }

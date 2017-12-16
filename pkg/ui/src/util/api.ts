@@ -77,6 +77,9 @@ export type RangeLogResponseMessage =
 export type CommandQueueRequestMessage = protos.cockroach.server.serverpb.CommandQueueRequest;
 export type CommandQueueResponseMessage = protos.cockroach.server.serverpb.CommandQueueResponse;
 
+export type TracesIndexRequestMessage = protos.cockroach.server.serverpb.TracesIndexRequest;
+export type TracesIndexResponseMessage = protos.cockroach.server.serverpb.TracesIndexResponse;
+
 // API constants
 
 export const API_PREFIX = "_admin/v1";
@@ -284,4 +287,8 @@ export function getRangeLog(
 // getCommandQueue returns a representation of the command queue for a given range id
 export function getCommandQueue(req: CommandQueueRequestMessage, timeout?: moment.Duration): Promise<CommandQueueResponseMessage> {
   return timeoutFetch(serverpb.CommandQueueResponse, `${STATUS_PREFIX}/range/${req.range_id}/cmdqueue`, null, timeout);
+}
+
+export function getTracesIndex(timeout?: moment.Duration): Promise<TracesIndexResponseMessage> {
+  return timeoutFetch(serverpb.TracesIndexResponse, `${API_PREFIX}/traces`, null, timeout);
 }
