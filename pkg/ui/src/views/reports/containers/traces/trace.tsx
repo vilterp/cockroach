@@ -8,6 +8,9 @@ import * as protos from "src/js/protos";
 import {traceTxnIdxAttr} from "oss/src/util/constants";
 import {RouterState} from "react-router";
 import TraceView, { TraceViewState, initialState, Action, update } from "./TraceView";
+import {cockroach} from "oss/src/js/protos";
+import Span = cockroach.server.serverpb.TraceResponse.Span;
+import {visitNodes} from "oss/src/views/reports/containers/traces/tree";
 
 interface TraceOwnProps {
   traceState: CachedDataReducerState<api.TraceResponseMessage>;
@@ -41,18 +44,47 @@ class Trace extends React.Component<TraceProps, TraceState> {
     });
   }
 
+  getHoveredSpan = (): Span => {
+    const hoveredIdx = this.state.state.hoveredSpan;
+    if (!hoveredIdx) {
+      return null;
+    }
+    const rootSpan = this.props.traceState.data.root_span;
+    let spanWithID = null;
+    visitNodes(rootSpan, (span, _) => {
+      if (span.idx.toString() === hoveredIdx) {
+        spanWithID = span;
+      }
+    });
+    return spanWithID;
+  }
+
   render() {
     return (
       <div className="section">
         <h1>Trace</h1>
+        <p>
+          Txn idx {this.props.params[traceTxnIdxAttr]}
+        </p>
         {!this.props.traceState.data || this.props.traceState.inFlight
           ? <p>Loading...</p>
-          : <TraceView
-              trace={this.props.traceState.data.root_span}
-              handleAction={this.handleAction}
-              traceState={this.state.state}
-              width={1000}
-            />
+          : <table>
+              <tbody>
+                <tr>
+                  <td>
+                    <TraceView
+                      trace={this.props.traceState.data.root_span}
+                      handleAction={this.handleAction}
+                      traceState={this.state.state}
+                      width={1000}
+                    />
+                  </td>
+                  <td style={{verticalAlign: "top", overflow: "scroll"}}>
+                    <pre>{JSON.stringify(this.getHoveredSpan(), null, 2)}</pre>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
         }
       </div>
     );
