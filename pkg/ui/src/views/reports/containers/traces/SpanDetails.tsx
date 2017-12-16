@@ -43,6 +43,7 @@ function SpanDetails(props: SpanDetailsProps) {
       <table className="span-log">
         <thead>
           <th>Age</th>
+          <th>Tag</th>
           <th>Message</th>
         </thead>
         <tbody>
@@ -52,6 +53,7 @@ function SpanDetails(props: SpanDetailsProps) {
             return (
               <tr>
                 <td>{Duration(relAge)}</td>
+                <td>{logEntry.tag}</td>
                 <td>{logEntry.message}</td>
               </tr>
             );

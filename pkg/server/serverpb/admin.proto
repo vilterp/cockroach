@@ -512,6 +512,7 @@ message TraceResponse {
     // TODO(vilterp): use google.protobuf.Timestamp
     int64 age_ns = 1;
     string message = 2;
+    string tag = 3;
   }
 
   message Span {

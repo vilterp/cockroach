@@ -124,7 +124,11 @@ class TraceView extends Component<TraceViewProps, {}> {
     const scale = lerp(0, width - 300, 0, lastTS);
 
     return (
-      <svg width={width} height="2000" style={{ border: "1px solid black" }}>
+      <svg
+        width={width}
+        height={flattened.length * HEIGHT_PLUS_SPACE}
+        style={{ border: "1px solid black", backgroundColor: "white" }}
+      >
         {flattened.map((span, idx) => {
           const isHovered = hoveredSpan === span.idx.toString();
           const isCollapsed = _.includes(collapsedSpans, span.idx.toString());

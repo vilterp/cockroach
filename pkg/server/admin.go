@@ -1632,6 +1632,7 @@ func (s *adminServer) assertNotVirtualSchema(dbName string) error {
 type traceRow struct {
 	txnIdx        int64
 	spanIdx       int64
+	messageIdx    int64
 	parentSpanIdx *int64
 	//timestamp     *time.Time
 	//duration      duration.Duration
@@ -1639,6 +1640,7 @@ type traceRow struct {
 	durationNS int64
 	operation  string
 	message    string
+	tag        string
 }
 
 func (s *adminServer) Trace(
@@ -1656,11 +1658,13 @@ func (s *adminServer) Trace(
 		SELECT
 			txn_idx,
 			span_idx,
+			message_idx,
 			parent_span_idx,
 			timestamp - first_value(timestamp) OVER (ORDER BY timestamp) AS age,
 			duration,
 			operation,
-			message
+			message,
+			tag
 		FROM traces.traces
 		WHERE txn_idx = $1
 	`
@@ -1676,35 +1680,37 @@ func (s *adminServer) Trace(
 		row := r.ResultList[0].Rows.At(i)
 
 		var parentSpanIdx *int64
-		if parent, ok := tree.AsDInt(row[2]); ok {
+		if parent, ok := tree.AsDInt(row[3]); ok {
 			asInt64 := int64(parent)
 			parentSpanIdx = &asInt64
 		}
 
-		operationStr, ok := tree.AsDString(row[5])
+		operationStr, ok := tree.AsDString(row[6])
 		var operation string
 		if ok {
 			operation = string(operationStr)
 		}
 
 		var dur duration.Duration
-		if dInterval, ok := row[4].(*tree.DInterval); ok {
+		if dInterval, ok := row[5].(*tree.DInterval); ok {
 			dur = dInterval.Duration
 		}
 
 		var age duration.Duration
-		if aInterval, ok := row[3].(*tree.DInterval); ok {
+		if aInterval, ok := row[4].(*tree.DInterval); ok {
 			age = aInterval.Duration
 		}
 
 		rows = append(rows, traceRow{
 			txnIdx:        int64(tree.MustBeDInt(row[0])),
 			spanIdx:       int64(tree.MustBeDInt(row[1])),
+			messageIdx:    int64(tree.MustBeDInt(row[2])),
 			parentSpanIdx: parentSpanIdx,
 			ageNS:         age.Nanos,
 			durationNS:    dur.Nanos,
 			operation:     operation,
-			message:       string(tree.MustBeDString(row[6])),
+			message:       string(tree.MustBeDString(row[7])),
+			tag:           string(tree.MustBeDString(row[8])),
 		})
 	}
 
@@ -1727,20 +1733,21 @@ func getSpan(
 		Operation:  rows[0].operation,
 	}
 	spanIdx := rows[0].spanIdx
-	// get log rows for this span
+	// Get log rows for this span.
 	for _, row := range rows {
 		if row.txnIdx == txnIdx && row.spanIdx == spanIdx {
 			// Exclude SPAN START messages.
-			if row.parentSpanIdx == nil {
+			if row.messageIdx > 0 {
 				span.Log = append(span.Log, &serverpb.TraceResponse_LogMessage{
 					Message: row.message,
 					AgeNs:   row.ageNS,
+					Tag:     row.tag,
 				})
 			}
 			length++
 		}
 	}
-	// get child spans for this span
+	// Get child spans for this span.
 	for idx, row := range rows {
 		if row.txnIdx == txnIdx &&
 			row.spanIdx != spanIdx &&
