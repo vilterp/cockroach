@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/cockroach/pkg/util/duration"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -1626,4 +1627,126 @@ func (s *adminServer) assertNotVirtualSchema(dbName string) error {
 		return grpc.Errorf(codes.InvalidArgument, "%q is a virtual schema", dbName)
 	}
 	return nil
+}
+
+type traceRow struct {
+	txnIdx        int64
+	spanIdx       int64
+	parentSpanIdx *int64
+	//timestamp     *time.Time
+	//duration      duration.Duration
+	timestamp string
+	duration  string
+	operation string
+	message   string
+}
+
+func (s *adminServer) Traces(
+	ctx context.Context, req *serverpb.TracesRequest,
+) (*serverpb.TracesResponse, error) {
+	args := sql.SessionArgs{User: s.getUser(req)}
+	ctx, session := s.NewContextAndSessionForRPC(ctx, args)
+	defer session.Finish(s.server.sqlExecutor)
+	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, "SELECT * FROM traces.traces", nil, 1)
+	if err != nil {
+		return nil, s.serverError(err)
+	}
+	defer r.Close(ctx)
+
+	var rows []traceRow
+	for i, nRows := 0, r.ResultList[0].Rows.Len(); i < nRows; i++ {
+		row := r.ResultList[0].Rows.At(i)
+
+		var parentSpanIdx *int64
+		if parent, ok := tree.AsDInt(row[2]); ok {
+			asInt64 := int64(parent)
+			parentSpanIdx = &asInt64
+		}
+
+		operationStr, ok := tree.AsDString(row[6])
+		var operation string
+		if ok {
+			operation = string(operationStr)
+		}
+
+		var dur duration.Duration
+		if dInterval, ok := row[5].(*tree.DInterval); ok {
+			dur = dInterval.Duration
+		}
+
+		rows = append(rows, traceRow{
+			txnIdx:        int64(tree.MustBeDInt(row[0])),
+			spanIdx:       int64(tree.MustBeDInt(row[1])),
+			parentSpanIdx: parentSpanIdx,
+			timestamp:     row[4].String(), // TODO(vilterp): get this
+			duration:      dur.String(),
+			operation:     operation,
+			message:       string(tree.MustBeDString(row[9])),
+		})
+	}
+
+	// build trees
+	var txns []*serverpb.TracesResponse_TxnTrace
+	idx := 0
+	for idx < len(rows) {
+		nextTxn, length := getTxn(rows[idx:])
+		txns = append(txns, nextTxn)
+		idx += length + 1
+	}
+
+	return &serverpb.TracesResponse{
+		TransactionTraces: txns,
+	}, nil
+}
+
+func getTxn(rows []traceRow) (txn *serverpb.TracesResponse_TxnTrace, length int) {
+	txn = &serverpb.TracesResponse_TxnTrace{
+		TxnIdx: rows[0].txnIdx,
+	}
+	rootSpan, length := getSpan(txn, rows)
+	txn.RootSpan = rootSpan
+	return txn, length
+}
+
+func getSpan(
+	txn *serverpb.TracesResponse_TxnTrace, rows []traceRow,
+) (span *serverpb.TracesResponse_Span, length int) {
+	span = &serverpb.TracesResponse_Span{
+		Log:       make([]*serverpb.TracesResponse_LogMessage, 0),
+		Duration:  rows[0].duration,
+		Timestamp: rows[0].timestamp,
+		Operation: rows[0].operation,
+	}
+	txnIdx := txn.TxnIdx
+	spanIdx := rows[0].spanIdx
+	// get log rows for this span
+	for _, row := range rows {
+		if row.txnIdx == txnIdx && row.spanIdx == spanIdx {
+			// Exclude SPAN START messages.
+			if row.parentSpanIdx == nil {
+				span.Log = append(span.Log, &serverpb.TracesResponse_LogMessage{
+					Message:   row.message,
+					Timestamp: row.timestamp,
+				})
+			}
+			length++
+		}
+	}
+	// get child spans for this span
+	for idx, row := range rows {
+		parentSpanIdx := int64(-1)
+		if row.parentSpanIdx != nil {
+			parentSpanIdx = *row.parentSpanIdx
+		}
+		fmt.Printf("txnIdx: %d, spanidx: %d, rowParent: %d, row: %+v\n", txnIdx, spanIdx, parentSpanIdx, row)
+		if row.txnIdx == txnIdx && row.spanIdx != spanIdx && row.parentSpanIdx != nil && *row.parentSpanIdx == spanIdx {
+			fmt.Println("\tmade it")
+			childSpan, newLen := getSpan(txn, rows[idx:])
+			if idx+newLen > length {
+				length = idx + newLen
+			}
+			span.ChildSpans = append(span.ChildSpans, childSpan)
+		}
+	}
+	return span, length
 }

@@ -1631,7 +1631,7 @@ func (st *SessionTracing) generateSessionTraceVTable() ([]traceRow, error) {
 				index:        spanIdx,
 				txnIdx:       txnIdx,
 			}
-			msgs, err := getMessagesForSubtrace(spanWithIndex, spans, seenSpans)
+			msgs, err := getMessagesForSubtrace(spanWithIndex, nil, spans, seenSpans)
 			if err != nil {
 				return nil, err
 			}
@@ -1724,7 +1724,10 @@ func getOrderedChildSpans(
 // seenSpans is modified to record all the spans that are part of the subtrace
 // rooted at span.
 func getMessagesForSubtrace(
-	span spanWithIndex, allSpans []tracing.RecordedSpan, seenSpans map[uint64]struct{},
+	span spanWithIndex,
+	parentSpanIdx *int,
+	allSpans []tracing.RecordedSpan,
+	seenSpans map[uint64]struct{},
 ) ([]logRecordRow, error) {
 	if _, ok := seenSpans[span.SpanID]; ok {
 		return nil, errors.Errorf("duplicate span %d", span.SpanID)
@@ -1739,7 +1742,7 @@ func getMessagesForSubtrace(
 			timestamp:     span.StartTime,
 			msg:           fmt.Sprintf(spanStartMsgTemplate, span.Operation),
 			span:          span,
-			parentSpanIdx: &span.index,
+			parentSpanIdx: parentSpanIdx,
 			index:         0,
 		})
 
@@ -1771,7 +1774,7 @@ func getMessagesForSubtrace(
 			i++
 		} else {
 			// Recursively append messages from the trace rooted at the child.
-			childMsgs, err := getMessagesForSubtrace(childSpans[j], allSpans, seenSpans)
+			childMsgs, err := getMessagesForSubtrace(childSpans[j], &span.index, allSpans, seenSpans)
 			if err != nil {
 				return nil, err
 			}

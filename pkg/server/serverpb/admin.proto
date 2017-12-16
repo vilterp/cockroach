@@ -491,6 +491,33 @@ message QueryPlanRequest {
   string query = 1;
 }
 
+message TracesRequest {}
+
+message TracesResponse {
+
+  message TxnTrace {
+    int64 txn_idx = 1;
+    Span root_span = 2;
+  }
+
+  message LogMessage {
+    // TODO(vilterp): use google.protobuf.Timestamp
+    string timestamp = 1;
+    string message = 2;
+  }
+
+  message Span {
+    string operation = 1;
+    // TODO(vilterp): use google.protobuf.{Timestamp, Duration}
+    string timestamp = 2;
+    string duration = 3;
+    repeated LogMessage log = 4;
+    repeated Span child_spans = 5;
+  }
+
+  repeated TxnTrace transaction_traces = 1;
+}
+
 // QueryPlanResponse contains the query plans for a SQL string (currently only
 // the distsql physical query plan).
 message QueryPlanResponse {
@@ -661,6 +688,12 @@ service Admin {
       additional_bindings {
         get: "/_admin/v1/rangelog/{range_id}"
      }
+    };
+  }
+
+  rpc Traces(TracesRequest) returns (TracesResponse) {
+    option (google.api.http) = {
+      get: "/_admin/v1/traces"
     };
   }
 }
