@@ -146,12 +146,12 @@ class TraceView extends Component<TraceViewProps, {}> {
               <rect
                 fill={isHovered ? "blue" : "lightblue"}
                 y={idx * HEIGHT_PLUS_SPACE - 5}
-                x={scale(FixLong(span.age_ns).toNumber())}
+                x={scale(FixLong(span.age_ns).toNumber()) + 5}
                 height={HEIGHT}
                 width={scale(FixLong(span.duration_ns).toNumber())}
               />
               <text
-                x={scale(FixLong(span.age_ns).toNumber()) + 5}
+                x={scale(FixLong(span.age_ns).toNumber()) + 10}
                 y={idx * HEIGHT_PLUS_SPACE + HEIGHT / 2}
                 fill={isHovered ? "grey" : "black"}
               >
@@ -161,7 +161,7 @@ class TraceView extends Component<TraceViewProps, {}> {
                 {span.log.map((logEntry, logIdx) => (
                   <circle
                     key={logIdx}
-                    cx={scale(FixLong(logEntry.age_ns).toNumber())}
+                    cx={scale(FixLong(logEntry.age_ns).toNumber()) + 5}
                     cy={idx * HEIGHT_PLUS_SPACE + 20}
                     r={3}
                     fill={"white"}

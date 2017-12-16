@@ -494,7 +494,12 @@ message QueryPlanRequest {
 message TracesIndexRequest {}
 
 message TracesIndexResponse {
-  repeated int64 txn_idxs = 1;
+  message TraceListing {
+    int64 txn_idx = 1;
+    int64 num_messages = 2;
+  }
+
+  repeated TraceListing listings = 1;
 }
 
 message TraceRequest {

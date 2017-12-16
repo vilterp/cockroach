@@ -5,6 +5,7 @@ import { AdminUIState } from "oss/src/redux/state";
 import { refreshTracesIndex } from "oss/src/redux/apiReducers";
 import Link from "react-router/lib/Link";
 import {CachedDataReducerState} from "oss/src/redux/cachedDataReducer";
+import "./index.styl";
 
 interface TracesIndexProps {
   tracesIndexState: CachedDataReducerState<api.TracesIndexResponseMessage>;
@@ -20,19 +21,32 @@ class TracesIndex extends React.Component<TracesIndexProps, {}> {
   render() {
     return (
       <div className="section">
-        <h1>Traces</h1>
-        <ul>
-          {!this.props.tracesIndexState.data
-            ? <p>Loading...</p>
-            : this.props.tracesIndexState.data.txn_idxs.length === 0
-              ? <p>None</p>
-              : this.props.tracesIndexState.data.txn_idxs.map((idx) => (
-                  <li key={idx.toString()}>
-                    <Link to={`/reports/traces/${idx.toString()}`}>{idx.toString()}</Link>
-                  </li>
-                ))
-          }
-        </ul>
+        <h1 style={{paddingBottom: 20}}>Traces</h1>
+        {!this.props.tracesIndexState.data
+          ? <p>Loading...</p>
+          : this.props.tracesIndexState.data.listings.length === 0
+            ? <p>None</p>
+            : <table className="span-log">
+                <thead>
+                  <th>Txn Idx</th>
+                  <th># Messages</th>
+                </thead>
+                <tbody>
+                  {this.props.tracesIndexState.data.listings.map((listing) => (
+                    <tr key={listing.txn_idx.toString()}>
+                      <td>
+                        <Link to={`/reports/traces/${listing.txn_idx.toString()}`}>
+                          {listing.txn_idx.toString()}
+                        </Link>
+                      </td>
+                      <td>
+                        {listing.num_messages.toString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+        }
         <h2>How To Use This</h2>
         <div>
           <pre>

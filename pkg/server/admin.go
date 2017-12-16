@@ -1763,22 +1763,31 @@ func (s *adminServer) TracesIndex(
 	ctx, session := s.NewContextAndSessionForRPC(ctx, args)
 	defer session.Finish(s.server.sqlExecutor)
 
-	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(
-		session, "SELECT DISTINCT txn_idx FROM traces.traces", nil, 1,
-	)
+	query := `
+		SELECT txn_idx, count(*)
+		FROM traces.traces
+		GROUP BY txn_idx
+		ORDER BY count(*) DESC
+	`
+
+	r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, query, nil, 1)
 	if err != nil {
 		return nil, s.serverError(err)
 	}
 	defer r.Close(ctx)
 
-	var txnIdxs []int64
+	var listings []*serverpb.TracesIndexResponse_TraceListing
 	for i, nRows := 0, r.ResultList[0].Rows.Len(); i < nRows; i++ {
 		row := r.ResultList[0].Rows.At(i)
-		txnId := tree.MustBeDInt(row[0])
-		txnIdxs = append(txnIdxs, int64(txnId))
+		txnIdx := int64(tree.MustBeDInt(row[0]))
+		numMessages := int64(tree.MustBeDInt(row[1]))
+		listings = append(listings, &serverpb.TracesIndexResponse_TraceListing{
+			TxnIdx:      txnIdx,
+			NumMessages: numMessages,
+		})
 	}
 
 	return &serverpb.TracesIndexResponse{
-		TxnIdxs: txnIdxs,
+		Listings: listings,
 	}, nil
 }
