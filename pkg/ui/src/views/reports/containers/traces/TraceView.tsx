@@ -140,7 +140,7 @@ class TraceView extends Component<TraceViewProps, {}> {
               key={span.idx.toString()}
               style={{ cursor: "pointer" }}
               onMouseOver={() => { this.handleAction(hoverSpan(span.idx.toString())); }}
-              onMouseOut={() => { this.handleAction(unHoverSpan); }}
+              // onMouseOut={() => { this.handleAction(unHoverSpan); }}
               onClick={() => { this.handleAction(toggleCollapsed(span.idx.toString())); }}
             >
               <rect
@@ -153,7 +153,7 @@ class TraceView extends Component<TraceViewProps, {}> {
               <text
                 x={scale(FixLong(span.age_ns).toNumber()) + 5}
                 y={idx * HEIGHT_PLUS_SPACE + HEIGHT / 2}
-                fill={isHovered ? "white" : "black"}
+                fill={isHovered ? "grey" : "black"}
               >
                 {label}
               </text>

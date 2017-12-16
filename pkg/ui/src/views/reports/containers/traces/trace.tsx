@@ -11,6 +11,8 @@ import TraceView, { TraceViewState, initialState, Action, update } from "./Trace
 import {cockroach} from "oss/src/js/protos";
 import Span = cockroach.server.serverpb.TraceResponse.Span;
 import {visitNodes} from "oss/src/views/reports/containers/traces/tree";
+import Link from "react-router/lib/Link";
+import SpanDetails from "oss/src/views/reports/containers/traces/SpanDetails";
 
 interface TraceOwnProps {
   traceState: CachedDataReducerState<api.TraceResponseMessage>;
@@ -46,6 +48,7 @@ class Trace extends React.Component<TraceProps, TraceState> {
 
   getHoveredSpan = (): Span => {
     const hoveredIdx = this.state.state.hoveredSpan;
+    // const hoveredIdx = "0";
     if (!hoveredIdx) {
       return null;
     }
@@ -61,17 +64,17 @@ class Trace extends React.Component<TraceProps, TraceState> {
 
   render() {
     return (
-      <div className="section">
+      <div className="section" style={{maxWidth: "none"}}>
         <h1>Trace</h1>
-        <p>
-          Txn idx {this.props.params[traceTxnIdxAttr]}
-        </p>
+        <section className="section parent-link">
+          <Link to="/reports/traces">Traces</Link> / Txn Idx {this.props.params[traceTxnIdxAttr]}
+        </section>
         {!this.props.traceState.data || this.props.traceState.inFlight
           ? <p>Loading...</p>
           : <table>
               <tbody>
                 <tr>
-                  <td>
+                  <td style={{verticalAlign: "top"}}>
                     <TraceView
                       trace={this.props.traceState.data.root_span}
                       handleAction={this.handleAction}
@@ -79,8 +82,8 @@ class Trace extends React.Component<TraceProps, TraceState> {
                       width={1000}
                     />
                   </td>
-                  <td style={{verticalAlign: "top", overflow: "scroll"}}>
-                    <pre>{JSON.stringify(this.getHoveredSpan(), null, 2)}</pre>
+                  <td style={{verticalAlign: "top", paddingLeft: 10}}>
+                    <SpanDetails span={this.getHoveredSpan()} />
                   </td>
                 </tr>
               </tbody>
