@@ -1,25 +1,47 @@
+import { AxisUnits } from "oss/src/views/shared/components/metricQuery";
+import { GraphDashboardProps } from "oss/src/views/cluster/containers/nodeGraphs/dashboards/dashboardUtils";
+
 export type Measure = "count" | "bytes" | "duration";
 
-type Metric = {
+export type Metric = {
   name: string,
+  sources?: string[],
   title?: string,
+  rate?: boolean,
+  nonNegativeRate?: boolean,
+  aggregateMax?: boolean,
+  aggregateMin?: boolean,
+  aggregateAvg?: boolean,
+  downsampleMax?: boolean,
+  downsampleMin?: boolean,
 };
 
 // Chart representing multiple metrics.
 type MetricsChartConfig = {
-  type: "metrics",
-  measure: Measure,
   metrics: Metric[],
 };
 
 // Chart representing a single metric across multiple nodes.
 type NodesChartConfig = {
-  type: "nodes",
-  measure: Measure,
   metric: Metric,
 };
 
-export type ChartConfig = MetricsChartConfig | NodesChartConfig;
+export type ChartDataConfig = MetricsChartConfig | NodesChartConfig;
+
+type CommonChartConfig = {
+  title: string,
+  measure: Measure,
+  sources?: string[],
+  tooltip?: string | JSX.Element,
+  axis?: AxisConfig,
+};
+
+export type AxisConfig = {
+  units?: AxisUnits,
+  label?: string,
+};
+
+type ChartConfig = CommonChartConfig & ChartDataConfig;
 
 export type DashboardConfig = {
   // Unique identifier for this dashboard, e.g. "nodes.overview"
@@ -27,10 +49,12 @@ export type DashboardConfig = {
   charts: ChartConfig[],
 };
 
-export function isMetricsChart(chart: ChartConfig): chart is MetricsChartConfig {
-  return chart.type === "metrics";
-}
+export type DashboardConfigState = (props: GraphDashboardProps) => DashboardConfig;
 
-export function isNodesChart(chart: ChartConfig): chart is NodesChartConfig {
-  return chart.type === "nodes";
-}
+// export function isMetricsChart(chart: ChartDataConfig): chart is MetricsChartConfig {
+//   return chart.type === "metrics";
+// }
+//
+// export function isNodesChart(chart: ChartDataConfig): chart is NodesChartConfig {
+//   return chart.type === "nodes";
+// }

@@ -8,7 +8,7 @@ import { hoverStateSelector, HoverState } from "src/redux/hover";
 import { MetricQuerySet } from "src/redux/metrics";
 import { nodesSummarySelector, NodesSummary } from "src/redux/nodes";
 import { AdminUIState } from "src/redux/state";
-import {ChartConfig, isMetricsChart, isNodesChart, Measure} from "src/util/charts";
+import {ChartDataConfig, isMetricsChart, isNodesChart, Measure} from "src/util/charts";
 import { NanoToMilli } from "src/util/convert";
 import { Bytes, Count, Duration } from "src/util/format";
 
@@ -62,7 +62,7 @@ const dashboards = [
   storageCharts,
 ];
 
-const charts: { [key: string]: ChartConfig } = {};
+const charts: { [key: string]: ChartDataConfig } = {};
 dashboards.forEach((dashboard) => {
   dashboard.charts.forEach((chart, idx) => {
     charts[`${dashboard.id}.${idx}`] = chart;
