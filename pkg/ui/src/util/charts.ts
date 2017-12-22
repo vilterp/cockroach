@@ -5,28 +5,32 @@ type Metric = {
   title?: string,
 };
 
-type MetricsChart = {
+// Chart representing multiple metrics.
+type MetricsChartConfig = {
   type: "metrics",
   measure: Measure,
   metrics: Metric[],
 };
 
-type NodesChart = {
+// Chart representing a single metric across multiple nodes.
+type NodesChartConfig = {
   type: "nodes",
   measure: Measure,
   metric: Metric,
 };
 
-type Chart = MetricsChart | NodesChart;
+export type ChartConfig = MetricsChartConfig | NodesChartConfig;
 
-export type ChartConfig = {
-  [key: string]: Chart,
+export type DashboardConfig = {
+  // Unique identifier for this dashboard, e.g. "nodes.overview"
+  id: string,
+  charts: ChartConfig[],
 };
 
-export function isMetricsChart(chart: Chart): chart is MetricsChart {
+export function isMetricsChart(chart: ChartConfig): chart is MetricsChartConfig {
   return chart.type === "metrics";
 }
 
-export function isNodesChart(chart: Chart): chart is NodesChart {
+export function isNodesChart(chart: ChartConfig): chart is NodesChartConfig {
   return chart.type === "nodes";
 }

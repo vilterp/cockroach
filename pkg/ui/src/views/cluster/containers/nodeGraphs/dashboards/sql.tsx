@@ -3,96 +3,99 @@ import _ from "lodash";
 
 import { LineGraph } from "src/views/cluster/components/linegraph";
 import { Metric, Axis, AxisUnits } from "src/views/shared/components/metricQuery";
-import { ChartConfig } from "src/util/charts";
+import { DashboardConfig } from "src/util/charts";
 
 import { GraphDashboardProps, nodeAddress } from "./dashboardUtils";
 
-export const charts: ChartConfig = {
-  "nodes.sql.0": {
-    type: "metrics",
-    measure: "count",
-    metrics: [
-      { name: "cr.node.sql.conns", title: "Client Connections" },
-    ],
-  },
-  "nodes.sql.1": {
-    type: "metrics",
-    measure: "bytes",
-    metrics: [
-      { name: "cr.node.sql.bytesin", title: "Bytes In" },
-      { name: "cr.node.sql.bytesout", title: "Bytes Out" },
-    ],
-  },
-  "nodes.sql.2": {
-    type: "metrics",
-    measure: "count",
-    metrics: [
-      { name: "cr.node.sql.select.count", title: "Total Reads" },
-      { name: "cr.node.sql.distsql.select.count", title: "DistSQL Reads" },
-      { name: "cr.node.sql.update.count", title: "Updates" },
-      { name: "cr.node.sql.insert.count", title: "Inserts" },
-      { name: "cr.node.sql.delete.count", title: "Deletes" },
-    ],
-  },
-  "nodes.sql.3": {
-    type: "metrics",
-    measure: "count",
-    metrics: [
-      { name: "cr.node.sql.distsql.queries.active", title: "Active Queries" },
-    ],
-  },
-  "nodes.sql.4": {
-    type: "nodes",
-    measure: "count",
-    metric: { name: "cr.node.sql.distsql.flows.active" },
-  },
-  "nodes.sql.5": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.sql.service.latency-p99" },
-  },
-  "nodes.sql.6": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.sql.service.latency-p90" },
-  },
-  "nodes.sql.7": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.sql.distsql.service.latency-p99" },
-  },
-  "nodes.sql.8": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.sql.distsql.service.latency-p90" },
-  },
-  "nodes.sql.9": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.exec.latency-p99" },
-  },
-  "nodes.sql.10": {
-    type: "nodes",
-    measure: "duration",
-    metric: { name: "cr.node.exec.latency-p90" },
-  },
-  "nodes.sql.11": {
-    type: "metrics",
-    measure: "count",
-    metrics: [
-      { name: "cr.node.sql.txn.begin.count", title: "Begin" },
-      { name: "cr.node.sql.txn.commit.count", title: "Commits" },
-      { name: "cr.node.sql.txn.rollback.count", title: "Rollbacks" },
-      { name: "cr.node.sql.txn.abort.count", title: "Aborts" },
-    ],
-  },
-  "nodes.sql.12": {
-    type: "metrics",
-    measure: "count",
-    metrics: [
-      { name: "cr.node.sql.ddl.count", title: "DDL Statements" },
-    ],
-  },
+export const charts: DashboardConfig = {
+  id: "nodes.sql",
+  charts: [
+    {
+      type: "metrics",
+      measure: "count",
+      metrics: [
+        { name: "cr.node.sql.conns", title: "Client Connections" },
+      ],
+    },
+    {
+      type: "metrics",
+      measure: "bytes",
+      metrics: [
+        { name: "cr.node.sql.bytesin", title: "Bytes In" },
+        { name: "cr.node.sql.bytesout", title: "Bytes Out" },
+      ],
+    },
+    {
+      type: "metrics",
+      measure: "count",
+      metrics: [
+        { name: "cr.node.sql.select.count", title: "Total Reads" },
+        { name: "cr.node.sql.distsql.select.count", title: "DistSQL Reads" },
+        { name: "cr.node.sql.update.count", title: "Updates" },
+        { name: "cr.node.sql.insert.count", title: "Inserts" },
+        { name: "cr.node.sql.delete.count", title: "Deletes" },
+      ],
+    },
+    {
+      type: "metrics",
+      measure: "count",
+      metrics: [
+        { name: "cr.node.sql.distsql.queries.active", title: "Active Queries" },
+      ],
+    },
+    {
+      type: "nodes",
+      measure: "count",
+      metric: { name: "cr.node.sql.distsql.flows.active" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.sql.service.latency-p99" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.sql.service.latency-p90" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.sql.distsql.service.latency-p99" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.sql.distsql.service.latency-p90" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.exec.latency-p99" },
+    },
+    {
+      type: "nodes",
+      measure: "duration",
+      metric: { name: "cr.node.exec.latency-p90" },
+    },
+    {
+      type: "metrics",
+      measure: "count",
+      metrics: [
+        { name: "cr.node.sql.txn.begin.count", title: "Begin" },
+        { name: "cr.node.sql.txn.commit.count", title: "Commits" },
+        { name: "cr.node.sql.txn.rollback.count", title: "Rollbacks" },
+        { name: "cr.node.sql.txn.abort.count", title: "Aborts" },
+      ],
+    },
+    {
+      type: "metrics",
+      measure: "count",
+      metrics: [
+        { name: "cr.node.sql.ddl.count", title: "DDL Statements" },
+      ],
+    },
+  ],
 };
 
 export default function (props: GraphDashboardProps) {
