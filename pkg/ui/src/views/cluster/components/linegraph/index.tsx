@@ -11,22 +11,16 @@ import {
 import { MetricsDataComponentProps } from "src/views/shared/components/metricQuery";
 import Visualization from "src/views/cluster/components/visualization";
 import { NanoToMilli } from "src/util/convert";
-import { AxisConfig, Metric } from "oss/src/util/charts";
+import { ChartConfig } from "oss/src/util/charts";
 
 type TSDatapoint = protos.cockroach.ts.tspb.TimeSeriesDatapoint$Properties;
 
 interface LineGraphProps extends MetricsDataComponentProps {
-  title?: string;
-  subtitle?: string;
-  legend?: boolean;
-  xAxis?: boolean;
-  tooltip?: React.ReactNode;
+  config: ChartConfig;
   hoverOn?: typeof hoverOn;
   hoverOff?: typeof hoverOff;
   hoverState?: HoverState;
   chartKey?: string;
-  metrics: Metric[];
-  axis: AxisConfig;
 }
 
 // Find which data point is closest to a specific time.
@@ -140,7 +134,14 @@ export class LineGraph extends React.Component<LineGraphProps, {}> {
       }
 
       ConfigureLineChart(
-        this.chart, this.graphEl, this.props.metrics, this.props.axis, this.props.data, this.props.timeInfo, hoverTime, thisChart,
+        this.chart,
+        this.graphEl,
+        this.props.config.metrics || [this.props.config.metric],
+        this.props.config.axis,
+        this.props.data,
+        this.props.timeInfo,
+        hoverTime,
+        thisChart,
       );
     }
   }
@@ -163,7 +164,8 @@ export class LineGraph extends React.Component<LineGraphProps, {}> {
   }
 
   render() {
-    const { title, subtitle, tooltip, data } = this.props;
+    const { config, data } = this.props;
+    const { title, subtitle, tooltip } = config;
 
     return <Visualization title={title} subtitle={subtitle} tooltip={tooltip} loading={!data} >
       <div className="linegraph">

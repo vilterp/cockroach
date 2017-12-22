@@ -30,6 +30,7 @@ export type ChartDataConfig = MetricsChartConfig | NodesChartConfig;
 
 type CommonChartConfig = {
   title: string,
+  subtitle?: string,
   measure: Measure,
   sources?: string[],
   tooltip?: string | JSX.Element,
@@ -41,7 +42,7 @@ export type AxisConfig = {
   label?: string,
 };
 
-type ChartConfig = CommonChartConfig & ChartDataConfig;
+export type ChartConfig = CommonChartConfig & ChartDataConfig;
 
 export type DashboardConfig = {
   // Unique identifier for this dashboard, e.g. "nodes.overview"

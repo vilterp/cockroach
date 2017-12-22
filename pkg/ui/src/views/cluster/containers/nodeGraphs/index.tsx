@@ -186,15 +186,11 @@ class NodeGraphs extends React.Component<NodeGraphsProps, {}> {
         <div key={key}>
           <MetricsDataProvider id={key}>
             <LineGraph
-              title={chartConfig.title}
-              sources={chartConfig.sources}
-              tooltip={chartConfig.tooltip}
+              config={chartConfig}
               hoverOn={hoverOn}
               hoverOff={hoverOff}
               hoverState={hoverState}
               chartKey={key}
-              axis={chartConfig.axis || {}}
-              metrics={metrics}
             />
           </MetricsDataProvider>
         </div>
