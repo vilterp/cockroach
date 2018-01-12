@@ -811,6 +811,12 @@ func (*Split) StatementType() StatementType { return Rows }
 func (*Split) StatementTag() string { return "SPLIT" }
 
 // StatementType implements the Statement interface.
+func (*TreeSelect) StatementType() StatementType { return Ack }
+
+// StatementType implements the Statement interface.
+func (*TreeSelect) StatementTag() string { return "ONE/MANY" }
+
+// StatementType implements the Statement interface.
 func (*Truncate) StatementType() StatementType { return Ack }
 
 // StatementTag returns a short string identifying the type of statement.
@@ -926,6 +932,7 @@ func (n *ShowZoneConfig) String() string            { return AsString(n) }
 func (n *ShowFingerprints) String() string          { return AsString(n) }
 func (n *Split) String() string                     { return AsString(n) }
 func (l *StatementList) String() string             { return AsString(l) }
+func (n *TreeSelect) String() string                { return AsString(n) }
 func (n *Truncate) String() string                  { return AsString(n) }
 func (n *UnionClause) String() string               { return AsString(n) }
 func (n *Update) String() string                    { return AsString(n) }

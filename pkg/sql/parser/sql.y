@@ -432,6 +432,15 @@ func (u *sqlSymUnion) resolvableFunctionReferenceFromUnresolvedName() tree.Resol
 func newNameFromStr(s string) *tree.Name {
     return (*tree.Name)(&s)
 }
+func (u *sqlSymUnion) treeSelect() *tree.TreeSelect {
+	  return u.val.(*tree.TreeSelect)
+}
+func (u *sqlSymUnion) treeSelections() []tree.TreeSelection {
+    return u.val.([]tree.TreeSelection)
+}
+func (u *sqlSymUnion) treeSelection() tree.TreeSelection {
+	  return u.val.(tree.TreeSelection)
+}
 %}
 
 // NB: the %token definitions must come before the %type definitions in this
@@ -495,13 +504,13 @@ func newNameFromStr(s string) *tree.Name {
 %token <str>   LEADING LEAST LEFT LESS LEVEL LIKE LIMIT LIST LOCAL
 %token <str>   LOCALTIME LOCALTIMESTAMP LOW LSHIFT
 
-%token <str>   MATCH MINVALUE MAXVALUE MINUTE MONTH
+%token <str>   MATCH MANY MINVALUE MAXVALUE MINUTE MONTH
 
 %token <str>   NAN NAME NAMES NATURAL NEXT NO NO_INDEX_JOIN NORMAL
 %token <str>   NOT NOTHING NULL NULLIF
 %token <str>   NULLS NUMERIC
 
-%token <str>   OF OFF OFFSET OID ON ONLY OPTION OPTIONS OR
+%token <str>   OF OFF OFFSET OID ON ONE ONLY OPTION OPTIONS OR
 %token <str>   ORDER ORDINALITY OUT OUTER OVER OVERLAPS OVERLAY OWNED
 
 %token <str>   PARENT PARTIAL PARTITION PASSWORD PAUSE PHYSICAL PLACING
@@ -664,6 +673,10 @@ func newNameFromStr(s string) *tree.Name {
 %type <tree.Statement> abort_stmt
 %type <tree.Statement> rollback_stmt
 %type <tree.Statement> savepoint_stmt
+
+%type <tree.Statement> tree_select_stmt
+%type <[]tree.TreeSelection> tree_selection_list
+%type <tree.TreeSelection> tree_selection
 
 %type <tree.Statement> set_stmt
 %type <tree.Statement> set_session_stmt
@@ -1053,6 +1066,7 @@ stmt:
 | set_stmt         // help texts in sub-rule
 | show_stmt        // help texts in sub-rule
 | transaction_stmt // help texts in sub-rule
+| tree_select_stmt
 | truncate_stmt    // EXTEND WITH HELP: TRUNCATE
 | update_stmt      // EXTEND WITH HELP: UPDATE
 | upsert_stmt      // EXTEND WITH HELP: UPSERT
@@ -4336,6 +4350,44 @@ multiple_set_clause:
     $$.val = &tree.UpdateExpr{Tuple: true, Names: $2.unresolvedNames(), Expr: $5.expr()}
   }
 
+tree_select_stmt:
+  ONE qualified_name '{' tree_selection_list '}'
+  {
+    $$.val = &tree.TreeSelect{
+    	Source: $2.normalizableTableNameFromUnresolvedName(),
+    	Selections: $4.treeSelections(),
+    	One: true,
+    }
+  }
+| MANY qualified_name '{' tree_selection_list '}'
+  {
+    $$.val = &tree.TreeSelect{
+    	Source: $2.normalizableTableNameFromUnresolvedName(),
+    	Selections: $4.treeSelections(),
+    	One: false,
+    }
+  }
+
+tree_selection_list:
+  tree_selection_list ',' tree_selection
+  {
+    $$.val = append($1.treeSelections(), $3.treeSelection())
+  }
+| tree_selection
+  {
+  	$$.val = []tree.TreeSelection{$1.treeSelection()}
+  }
+
+tree_selection:
+  name ':' tree_select_stmt
+  {
+  	$$.val = tree.TreeSelection{ColumnName: tree.Name($1), SubSelect: $3.treeSelect()}
+	}
+| name
+  {
+  	$$.val = tree.TreeSelection{ColumnName: tree.Name($1)}
+	}
+
 // A complete SELECT statement looks like this.
 //
 // The rule returns either a single select_stmt node or a tree of them,
@@ -7286,6 +7338,7 @@ unreserved_keyword:
 | LIST
 | LOCAL
 | LOW
+| MANY
 | MATCH
 | MINUTE
 | MONTH
@@ -7299,6 +7352,7 @@ unreserved_keyword:
 | OF
 | OFF
 | OID
+| ONE
 | OPTION
 | OPTIONS
 | ORDINALITY

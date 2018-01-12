@@ -767,6 +767,8 @@ func TestParse(t *testing.T) {
 		{`SELECT * FROM [123 AS t]@[456]`},
 		{`SELECT * FROM [123 AS t]@{FORCE_INDEX=[456],NO_INDEX_JOIN}`},
 
+		{`ONE blog_posts { id, title, body, comments: MANY comments { id, body } }`},
+
 		{`TABLE a`}, // Shorthand for: SELECT * FROM a; used e.g. in CREATE VIEW v AS TABLE t
 		{`TABLE [123 AS a]`},
 
