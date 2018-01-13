@@ -594,6 +594,8 @@ func (p *planner) newPlan(
 		return p.ShowFingerprints(ctx, n)
 	case *tree.Split:
 		return p.Split(ctx, n)
+	case *tree.TreeSelect:
+		return p.TreeSelect(ctx, n)
 	case *tree.Truncate:
 		if err := p.txn.SetSystemConfigTrigger(); err != nil {
 			return nil, err

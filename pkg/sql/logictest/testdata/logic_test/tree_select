@@ -1,0 +1,4 @@
+# LogicTest: default parallel-stmts distsql
+
+statement ok
+ONE blog_posts { id, title, body, comments: MANY comments { id, body } }

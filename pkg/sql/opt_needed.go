@@ -221,6 +221,7 @@ func setNeededColumns(plan planNode, needed []bool) {
 	case *showRangesNode:
 	case *showFingerprintsNode:
 	case *scatterNode:
+	case *treeSelectNode:
 
 	default:
 		panic(fmt.Sprintf("unhandled node type: %T", plan))
