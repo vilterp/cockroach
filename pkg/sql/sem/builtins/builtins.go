@@ -1008,7 +1008,7 @@ CockroachDB supports the following flags:
 				}
 				return tree.NewDInt(tree.DInt(res)), nil
 			},
-			Info: "Returns the latest value obtained with nextval for this sequence in this session.",
+			Info: "Returns the latest value obtained with `nextval` for this sequence in this session.",
 		},
 	},
 
@@ -1025,7 +1025,7 @@ CockroachDB supports the following flags:
 				}
 				return tree.NewDInt(tree.DInt(val)), nil
 			},
-			Info: "Return value most recently obtained with nextval in this session.",
+			Info: "Return value most recently obtained with `nextval` in this session.",
 		},
 	},
 
@@ -1051,8 +1051,8 @@ CockroachDB supports the following flags:
 				}
 				return args[1], nil
 			},
-			Info: "Set the given sequence's current value. The next call to nextval will return " +
-				"`value + Increment`",
+			Info: "Set the given sequence's current value. The next call to `nextval` will return " +
+				"`value + Increment`.",
 		},
 		tree.Builtin{
 			Types: tree.ArgTypes{
@@ -1077,8 +1077,8 @@ CockroachDB supports the following flags:
 				}
 				return args[1], nil
 			},
-			Info: "Set the given sequence's current value. If is_called is false, the next call to " +
-				"nextval will return `value`; otherwise `value + Increment`.",
+			Info: "Set the given sequence's current value. If `is_called` is `false`, the next call to " +
+				"`nextval` will return `value`; otherwise `value + Increment`.",
 		},
 	},
 
