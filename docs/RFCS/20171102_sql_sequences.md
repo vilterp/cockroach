@@ -1,5 +1,5 @@
 - Feature Name: Sequences
-- Status: in-progress
+- Status: completed
 - Start Date: 2017-10-09
 - Authors: Pete Vilter
 - RFC PR: [#19196](https://github.com/cockroachdb/cockroach/pull/19196)
