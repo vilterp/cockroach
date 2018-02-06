@@ -123,10 +123,10 @@ export class StatsView extends React.Component<StatsViewProps> {
           <tspan x="123" y="189">XXXX</tspan>
         </text>
         <g transform="translate(56 188)">
-          <mask id="e" fill="#fff">
+          <mask fill="#fff">
             <path d="M0 0h69v10H0z"/>
           </mask>
-          <path fill="#3A7DE1" opacity=".35" id="d" d="M0 0h69v10H0z"/>
+          <path fill="#3A7DE1" opacity=".35" d="M0 0h69v10H0z"/>
           <path stroke="#3A7DE1" strokeWidth="2" d="M-.838 4.29l5.819 3.355L10.984 9l4.429-3.04 5.311 1.685L26.178 2l5.397 7 5.334-3.04h10.656l6.037-.331L57.625 2l4.402 3.922 7.898-2.683" mask="url(#e)"/>
         </g>
       </g>
@@ -147,7 +147,7 @@ export class StatsView extends React.Component<StatsViewProps> {
 
   render() {
     return (
-      <g fill="none" fillRule="evenodd">
+      <g fill="none" fillRule="evenodd" transform="translate(-90 -100)">
         {this.renderCapacityArc()}
         {this.renderLabel()}
         {this.renderCPUBar()}
@@ -161,7 +161,7 @@ export class StatsView extends React.Component<StatsViewProps> {
 }
 
 const nodeIcon = (
-  <path id="a" d="M14.163 14.086a.901.901 0 0 1 .004.08c0 1.381-3.172 2.5-7.084 2.5-3.912 0-7.083-1.119-7.083-2.5 0-.026.001-.053.004-.08A1.013 1.013 0 0 1 0 14V2.667c0-.03.001-.058.004-.086A.901.901 0 0 1 0 2.5C0 1.12 3.171 0 7.083 0c3.912 0 7.084 1.12 7.084 2.5a.901.901 0 0 1-.004.08c.002.03.004.058.004.087V14c0 .029-.002.058-.004.086z" />
+  <path d="M14.163 14.086a.901.901 0 0 1 .004.08c0 1.381-3.172 2.5-7.084 2.5-3.912 0-7.083-1.119-7.083-2.5 0-.026.001-.053.004-.08A1.013 1.013 0 0 1 0 14V2.667c0-.03.001-.058.004-.086A.901.901 0 0 1 0 2.5C0 1.12 3.171 0 7.083 0c3.912 0 7.084 1.12 7.084 2.5a.901.901 0 0 1-.004.08c.002.03.004.058.004.087V14c0 .029-.002.058-.004.086z" />
 );
 
 const localityIcon = (
