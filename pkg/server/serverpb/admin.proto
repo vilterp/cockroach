@@ -519,15 +519,14 @@ message ReplicaMatrixRequest {
 
 message ReplicaMatrixResponse {
   message ZoneConfig {
-    int64 id = 1;
     // cli_specifier is ".default" for the default zone config.
     // Otherwise, it's of the form [database.]table[@index[.partition]]
-    string cli_specifier = 2;
+    string cli_specifier = 1;
 
-    config.ZoneConfig config = 3 [(gogoproto.nullable) = false];
+    config.ZoneConfig config = 2 [(gogoproto.nullable) = false];
 
     // config_yaml is the YAML representation of config.
-    string config_yaml = 4;
+    string config_yaml = 3;
   }
 
   message TableInfo {
@@ -543,13 +542,14 @@ message ReplicaMatrixResponse {
     string name = 1;
 
     // By table id.
-    map<uint64, TableInfo> table_info = 2;
+    map<uint64, TableInfo> table_info = 2 [(gogoproto.nullable) = false];
   }
 
   // By database id.
-  map<uint64, DatabaseInfo> database_info = 1;
+  map<uint64, DatabaseInfo> database_info = 1 [(gogoproto.nullable) = false];
 
-  repeated ZoneConfig zone_configs = 2 [(gogoproto.nullable) = false];
+  // By zone config id.
+  map<int64, ZoneConfig> zone_configs = 2 [(gogoproto.nullable) = false];
 }
 
 // Admin is the gRPC API for the admin UI. Through grpc-gateway, we offer

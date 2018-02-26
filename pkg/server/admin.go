@@ -1351,8 +1351,12 @@ func (s *adminServer) ReplicaMatrix(
 	defer session.Finish(s.server.sqlExecutor)
 
 	resp := &serverpb.ReplicaMatrixResponse{
-		DatabaseInfo: make(map[uint64]*serverpb.ReplicaMatrixResponse_DatabaseInfo),
+		DatabaseInfo: make(map[uint64]serverpb.ReplicaMatrixResponse_DatabaseInfo),
+		ZoneConfigs: make(map[int64]serverpb.ReplicaMatrixResponse_ZoneConfig),
 	}
+
+	// Get ids and names for databases and tables.
+	// Set up this structure in the response.
 
 	// Allocate table => DB mapping.
 	databaseIDForTableID := map[uint64]uint64{}
@@ -1373,30 +1377,49 @@ func (s *adminServer) ReplicaMatrix(
 		dbName := string(tree.MustBeDString(row[2]))
 		dbID := uint64(tree.MustBeDInt(row[3]))
 
+		// Update table => DB mapping.
+		databaseIDForTableID[tableID] = dbID
+
 		// Insert database if it doesn't exist.
 		dbInfo, ok := resp.DatabaseInfo[dbID]
 		if !ok {
-			dbInfo = &serverpb.ReplicaMatrixResponse_DatabaseInfo{
+			dbInfo = serverpb.ReplicaMatrixResponse_DatabaseInfo{
 				Name: dbName,
-				TableInfo: make(map[uint64]*serverpb.ReplicaMatrixResponse_TableInfo),
+				TableInfo: make(map[uint64]serverpb.ReplicaMatrixResponse_TableInfo),
 			}
 			resp.DatabaseInfo[dbID] = dbInfo
 		}
 
+		// Get zone config for table.
+		zoneConfigQuery := fmt.Sprintf(
+			`SELECT id, cli_specifier FROM [EXPERIMENTAL SHOW ZONE CONFIGURATION FOR TABLE %s.%s]`, dbName, tableName,
+		)
+		r, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, zoneConfigQuery, nil, 1)
+		if err != nil {
+			return nil, s.serverError(err)
+		}
+		defer r.Close(ctx) // TODO(vilterp): intellij linter complaining; is this bad?
+
+		rows := r.ResultList[0].Rows
+		if rows.Len() != 1 {
+			return nil, fmt.Errorf(
+				"could not get zone config for table %s; %d rows returned", tableName, rows.Len(),
+			)
+		}
+
+		zcRow := rows.At(0)
+		zcID := int64(tree.MustBeDInt(zcRow[0]))
+
 		// Insert table.
 		tableInfo, ok := dbInfo.TableInfo[tableID]
 		if !ok {
-			tableInfo = &serverpb.ReplicaMatrixResponse_TableInfo{
+			tableInfo = serverpb.ReplicaMatrixResponse_TableInfo{
 				Name: tableName,
 				ReplicaCountByNodeId: make(map[roachpb.NodeID]int64),
+				ZoneConfigId: zcID,
 			}
 			dbInfo.TableInfo[tableID] = tableInfo
 		}
-
-		// Update table => DB mapping.
-		databaseIDForTableID[tableID] = dbID
-
-		// TODO: get zone config for table
 	}
 
 	// Get replica counts.
@@ -1438,6 +1461,7 @@ func (s *adminServer) ReplicaMatrix(
 	}
 
 	// Get zone configs.
+	// TODO(vilterp): this can be done in parallel with getting table/db names and replica counts.
 	zoneConfigsQuery := `EXPERIMENTAL SHOW ALL ZONE CONFIGURATIONS`
 	r2, err := s.server.sqlExecutor.ExecuteStatementsBuffered(session, zoneConfigsQuery, nil, 1)
 	if err != nil {
@@ -1446,23 +1470,24 @@ func (s *adminServer) ReplicaMatrix(
 	defer r2.Close(ctx)
 
 	rows2 := r2.ResultList[0].Rows
-	zoneConfigs := make([]serverpb.ReplicaMatrixResponse_ZoneConfig, rows2.Len())
 	for idx := 0; idx < rows2.Len(); idx++ {
 		row := rows2.At(idx)
+
+		zcId := int64(tree.MustBeDInt(row[0]))
+		zcCliSpecifier := string(tree.MustBeDString(row[1]))
 		zcYaml := tree.MustBeDBytes(row[2])
 		zcBytes := tree.MustBeDBytes(row[3])
-		var zoneConfig config.ZoneConfig
-		if err := protoutil.Unmarshal([]byte(zcBytes), &zoneConfig); err != nil {
+		var zcProto config.ZoneConfig
+		if err := protoutil.Unmarshal([]byte(zcBytes), &zcProto); err != nil {
 			return nil, err
 		}
-		zoneConfigs[idx] = serverpb.ReplicaMatrixResponse_ZoneConfig{
-			Id: int64(tree.MustBeDInt(row[0])),
-			CliSpecifier: string(tree.MustBeDString(row[1])),
-			Config:       zoneConfig,
+
+		resp.ZoneConfigs[zcId] = serverpb.ReplicaMatrixResponse_ZoneConfig{
+			CliSpecifier: zcCliSpecifier,
+			Config:       zcProto,
 			ConfigYaml:   string(zcYaml),
 		}
 	}
-	resp.ZoneConfigs = zoneConfigs
 
 	return resp, nil
 }

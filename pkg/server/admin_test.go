@@ -1380,10 +1380,10 @@ func TestAdminAPIReplicaMatrix(t *testing.T) {
 	// Verify that we see their replicas in the ReplicaMatrix response, evenly spread
 	// across the test cluster's three nodes.
 
-	expectedResp := map[uint64]*serverpb.ReplicaMatrixResponse_DatabaseInfo{
+	expectedResp := map[uint64]serverpb.ReplicaMatrixResponse_DatabaseInfo{
 		50: {
 			Name: "roachblog",
-			TableInfo: map[uint64]*serverpb.ReplicaMatrixResponse_TableInfo{
+			TableInfo: map[uint64]serverpb.ReplicaMatrixResponse_TableInfo{
 				51: {
 					Name: "posts",
 					ReplicaCountByNodeId: map[roachpb.NodeID]int64{
@@ -1404,7 +1404,7 @@ func TestAdminAPIReplicaMatrix(t *testing.T) {
 		},
 	}
 
-	// This SucceedsSoon waits for the new tables' ranges to be created and replicated.
+	// Wait for the new tables' ranges to be created and replicated.
 	testutils.SucceedsSoon(t, func() error {
 		var resp serverpb.ReplicaMatrixResponse
 		if err := getAdminJSONProto(firstServer, "replica_matrix", &resp); err != nil {
@@ -1427,6 +1427,17 @@ func TestAdminAPIReplicaMatrix(t *testing.T) {
 	// Add a zone config.
 	sqlDB.Exec(t, `ALTER TABLE roachblog.posts EXPERIMENTAL CONFIGURE ZONE 'num_replicas: 1'`)
 
+	expectedNewZoneConfigId := int64(51)
+	sqlDB.CheckQueryResults(
+		t,
+		`SELECT id
+		FROM [EXPERIMENTAL SHOW ALL ZONE CONFIGURATIONS]
+		WHERE cli_specifier = 'roachblog.posts'`,
+		[][]string{
+			{fmt.Sprintf("%d", expectedNewZoneConfigId)},
+		},
+	)
+
 	// Verify that we see the zone config and its effects.
 	testutils.SucceedsSoon(t, func() error {
 		var resp serverpb.ReplicaMatrixResponse
@@ -1434,29 +1445,26 @@ func TestAdminAPIReplicaMatrix(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		postsTableInfo := resp.DatabaseInfo[50].TableInfo[51]
+
+		t.Log(resp.DatabaseInfo)
+
+		// Verify that the TableInfo for roachblog.posts points at the new zone config.
+		if postsTableInfo.ZoneConfigId != expectedNewZoneConfigId {
+			t.Fatalf(
+				"expected roachblog.posts to have zone config id %d; had %d",
+				expectedNewZoneConfigId, postsTableInfo.ZoneConfigId,
+			)
+		}
+
 		// Verify that the num_replicas setting has taken effect.
 		numPostsReplicas := int64(0)
-		for _, count := range resp.DatabaseInfo[50].TableInfo[51].ReplicaCountByNodeId {
+		for _, count := range postsTableInfo.ReplicaCountByNodeId {
 			numPostsReplicas += count
 		}
 
 		if numPostsReplicas != 1 {
 			return fmt.Errorf("expected 1 replica; got %d", numPostsReplicas)
-		}
-
-		// Verify that the response includes the new zone config.
-		// This test is fairly loose for now (it doesn't assert against the contents of
-		// the zone config). Once the UI does more than just dump out the CLI specifier and
-		// YAML, thus relying more heavily on the structure of the response, this test can
-		// be more strict.
-		sawNewZoneConfig := false
-		for _, zoneConfig := range resp.ZoneConfigs {
-			if zoneConfig.CliSpecifier == "roachblog.posts" {
-				sawNewZoneConfig = true
-			}
-		}
-		if !sawNewZoneConfig {
-			t.Fatal("expected to see new zone config in response; didn't see it")
 		}
 
 		return nil
