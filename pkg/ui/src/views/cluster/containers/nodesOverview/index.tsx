@@ -16,6 +16,7 @@ import { SortedTable } from "src/views/shared/components/sortedtable";
 import { LongToMoment } from "src/util/convert";
 import { Bytes } from "src/util/format";
 import { NodeStatus$Properties, MetricConstants, BytesUsed } from "src/util/proto";
+import { intersperse } from "src/util/intersperse";
 
 const liveNodesSortSetting = new LocalSetting<AdminUIState, SortSetting>(
   "nodes/live_sort_setting", (s) => s.localSettings,
@@ -150,6 +151,20 @@ class LiveNodeList extends React.Component<NodeCategoryListProps, {}> {
               title: "Version",
               cell: (ns) => ns.build_info.tag,
               sort: (ns) => ns.build_info.tag,
+            },
+            // Localities - the locality flags the node was started with
+            {
+              title: "Locality",
+              cell: (ns) => (
+                <span>
+                  {intersperse(
+                    ns.desc.locality.tiers.map((tier) => (
+                      <code>{tier.key}={tier.value}</code>
+                    )),
+                    <span>,</span>,
+                  )}
+                </span>
+              ),
             },
             // Logs - a link to the logs data for this node.
             {
