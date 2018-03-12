@@ -65,7 +65,7 @@ class LiveNodeList extends React.Component<NodeCategoryListProps, {}> {
       <section className="section section--heading">
         <h2>Live Nodes</h2>
       </section>
-      <section className="section">
+      <section style={{ overflow: "scroll", marginLeft: 20, marginRight: 20 }}>
         <NodeSortedTable
           data={statuses}
           sortSetting={sortSetting}
