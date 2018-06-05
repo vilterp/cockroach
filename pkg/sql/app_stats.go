@@ -134,6 +134,7 @@ func (a *appStats) recordStatement(
 	if err != nil {
 		s.data.LastErr = err.Error()
 		s.data.LastErrRedacted = log.Redact(err)
+		s.data.ErrCount++
 	}
 	if automaticRetryCount == 0 {
 		s.data.FirstAttemptCount++

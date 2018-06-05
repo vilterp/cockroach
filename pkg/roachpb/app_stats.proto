@@ -40,6 +40,9 @@ message StatementStatistics {
   // LastErr collects the last error encountered.
   optional string last_err = 4 [(gogoproto.nullable) = false];
 
+  // ErrCount is the number of errors for this statement.
+  optional int64 err_count = 12 [(gogoproto.nullable) = false];
+
   // LastErrRedacted collects the last error, redacted for reporting.
   optional string last_err_redacted = 11 [(gogoproto.nullable) = false];
 
