@@ -995,12 +995,12 @@ func TestServeIndexHTML(t *testing.T) {
 			t.Fatal(err)
 		}
 		respString := string(respBytes)
+		// TODO(vilterp): I thought these keys were sorted...
 		expected := fmt.Sprintf(
 			htmlTemplate,
 			fmt.Sprintf(
-				`{"ExperimentalUseLogin":false,"LoginEnabled":false,"LoggedInUser":null,"Tag":"%s","Version":"%s"}`,
-				build.GetInfo().Tag,
-				build.VersionPrefix(),
+				`{"ExperimentalUseLogin":false,"LoginEnabled":false,"LoggedInUser":null,"Tag":"%s","Version":"%s","GatewayNodeID":1}`,
+				build.GetInfo().Tag, build.VersionPrefix(),
 			),
 		)
 		if respString != expected {
@@ -1029,7 +1029,7 @@ func TestServeIndexHTML(t *testing.T) {
 			{
 				loggedInClient,
 				fmt.Sprintf(
-					`{"ExperimentalUseLogin":true,"LoginEnabled":true,"LoggedInUser":"authentic_user","Tag":"%s","Version":"%s"}`,
+					`{"ExperimentalUseLogin":true,"LoginEnabled":true,"LoggedInUser":"authentic_user","Tag":"%s","Version":"%s","GatewayNodeID":1}`,
 					build.GetInfo().Tag,
 					build.VersionPrefix(),
 				),
@@ -1037,7 +1037,7 @@ func TestServeIndexHTML(t *testing.T) {
 			{
 				loggedOutClient,
 				fmt.Sprintf(
-					`{"ExperimentalUseLogin":true,"LoginEnabled":true,"LoggedInUser":null,"Tag":"%s","Version":"%s"}`,
+					`{"ExperimentalUseLogin":true,"LoginEnabled":true,"LoggedInUser":null,"Tag":"%s","Version":"%s","GatewayNodeID":1}`,
 					build.GetInfo().Tag,
 					build.VersionPrefix(),
 				),
