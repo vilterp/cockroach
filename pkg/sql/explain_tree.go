@@ -63,7 +63,6 @@ func getPlanTree(ctx context.Context, top planTop) *roachpb.PlanNode {
 			return true, nil
 		},
 		expr: func(nodeName, fieldName string, n int, expr tree.Expr) {
-			fmt.Println("EXPR: nodeName", nodeName, "fieldName", fieldName, "n", n, "expr", expr)
 			if expr == nil {
 				return
 			}

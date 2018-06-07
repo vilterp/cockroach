@@ -516,7 +516,7 @@ func (dsp *DistSQLPlanner) PlanAndRun(
 	tree planNode,
 	recv *distSQLReceiver,
 	evalCtx *extendedEvalContext,
-) {
+) *physicalPlan {
 	planCtx := dsp.newPlanningCtx(ctx, evalCtx, txn)
 
 	log.VEvent(ctx, 1, "creating DistSQL plan")
@@ -524,8 +524,10 @@ func (dsp *DistSQLPlanner) PlanAndRun(
 	plan, err := dsp.createPlanForNode(&planCtx, tree)
 	if err != nil {
 		recv.SetError(err)
-		return
+		return nil
 	}
 	dsp.FinalizePlan(&planCtx, &plan)
 	dsp.Run(&planCtx, txn, &plan, recv, evalCtx)
+
+	return &plan
 }

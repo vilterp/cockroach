@@ -56,6 +56,15 @@ const QUERIES_COLUMNS: ColumnDescriptor<CollectedStatementStatistics$Properties>
     sort: (query) => query.stats.service_lat.mean,
   },
   {
+    title: "DistSQL Plan",
+    cell: (query) => (
+      query.stats.phys_plan_url
+        ? <a href={query.stats.phys_plan_url} target="_blank">View</a>
+        : null
+    ),
+    sort: (query) => query.stats.phys_plan_url.length, // so you can see the biggest plans
+  },
+  {
     title: "Plan",
     cell: (query) => (
       <PlanView plan={query.stats.most_recent_plan} />

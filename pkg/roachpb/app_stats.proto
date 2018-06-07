@@ -68,6 +68,8 @@ message StatementStatistics {
   // MostRecentPlan is the logical plan which was most recently captured for this query.
   // TODO(vilterp): also capture DistSQL plan
   optional PlanNode most_recent_plan = 12 [(gogoproto.nullable) = false];
+
+  optional string phys_plan_url = 13 [(gogoproto.nullable) = false];
 }
 
 message NumericStat {

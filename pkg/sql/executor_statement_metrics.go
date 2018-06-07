@@ -89,6 +89,7 @@ func (ex *connExecutor) recordStatementSummary(
 	planner *planner,
 	stmt Statement,
 	plan planTop,
+	physPlan *physicalPlan,
 	distSQLUsed bool,
 	automaticRetryCount int,
 	rowsAffected int,
@@ -136,7 +137,7 @@ func (ex *connExecutor) recordStatementSummary(
 	}
 
 	planner.statsCollector.RecordStatement(
-		stmt, plan, distSQLUsed, automaticRetryCount, rowsAffected, err,
+		stmt, plan, physPlan, distSQLUsed, automaticRetryCount, rowsAffected, err,
 		parseLat, planLat, runLat, svcLat, execOverhead,
 	)
 

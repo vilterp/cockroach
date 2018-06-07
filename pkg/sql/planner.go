@@ -553,6 +553,7 @@ type sqlStatsCollector interface {
 	RecordStatement(
 		stmt Statement,
 		plan planTop,
+		physPlan *physicalPlan,
 		distSQLUsed bool,
 		automaticRetryCount int,
 		numRows int,

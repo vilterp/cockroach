@@ -534,7 +534,7 @@ func (ex *connExecutor) execStmtInParallel(
 
 		planner.statsCollector.PhaseTimes()[plannerEndExecStmt] = timeutil.Now()
 		ex.recordStatementSummary(
-			planner, stmt, planner.curPlan, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
+			planner, stmt, planner.curPlan, nil, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
 			res.RowsAffected(), err, &ex.server.EngineMetrics,
 		)
 		if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -644,8 +644,9 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	queryMeta.isDistributed = useDistSQL
 	ex.mu.Unlock()
 
+	var physPlan *physicalPlan
 	if useDistSQL {
-		err = ex.execWithDistSQLEngine(ctx, planner, stmt.AST.StatementType(), res)
+		physPlan, err = ex.execWithDistSQLEngine(ctx, planner, stmt.AST.StatementType(), res)
 	} else {
 		err = ex.execWithLocalEngine(ctx, planner, stmt.AST.StatementType(), res)
 	}
@@ -654,7 +655,7 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 		return err
 	}
 	ex.recordStatementSummary(
-		planner, stmt, planner.curPlan, useDistSQL, ex.extraTxnState.autoRetryCounter,
+		planner, stmt, planner.curPlan, physPlan, useDistSQL, ex.extraTxnState.autoRetryCounter,
 		res.RowsAffected(), res.Err(), &ex.server.EngineMetrics,
 	)
 	if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -756,7 +757,7 @@ func (ex *connExecutor) execWithLocalEngine(
 // Query execution errors are written to res; they are not returned.
 func (ex *connExecutor) execWithDistSQLEngine(
 	ctx context.Context, planner *planner, stmtType tree.StatementType, res RestrictedCommandResult,
-) error {
+) (*physicalPlan, error) {
 	recv := makeDistSQLReceiver(
 		ctx, res, stmtType,
 		ex.server.cfg.RangeDescriptorCache, ex.server.cfg.LeaseHolderCache,
@@ -765,10 +766,10 @@ func (ex *connExecutor) execWithDistSQLEngine(
 			_ = ex.server.cfg.Clock.Update(ts)
 		},
 	)
-	ex.server.cfg.DistSQLPlanner.PlanAndRun(
+	plan := ex.server.cfg.DistSQLPlanner.PlanAndRun(
 		ctx, planner.txn, planner.curPlan.plan, recv, planner.ExtendedEvalContext(),
 	)
-	return recv.commErr
+	return plan, recv.commErr
 }
 
 // forEachRow calls the provided closure for each successful call to

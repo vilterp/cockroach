@@ -1468,6 +1468,7 @@ func (s *sqlStatsCollectorImpl) PhaseTimes() *phaseTimes {
 func (s *sqlStatsCollectorImpl) RecordStatement(
 	stmt Statement,
 	plan planTop,
+	physPlan *physicalPlan,
 	distSQLUsed bool,
 	automaticRetryCount int,
 	numRows int,
@@ -1475,7 +1476,7 @@ func (s *sqlStatsCollectorImpl) RecordStatement(
 	parseLat, planLat, runLat, svcLat, ovhLat float64,
 ) {
 	s.appStats.recordStatement(
-		stmt, plan, distSQLUsed, automaticRetryCount, numRows, err,
+		stmt, plan, physPlan, distSQLUsed, automaticRetryCount, numRows, err,
 		parseLat, planLat, runLat, svcLat, ovhLat)
 }
 

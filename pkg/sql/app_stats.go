@@ -27,6 +27,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/cockroachdb/cockroach/pkg/sql/distsqlrun"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -52,6 +53,9 @@ type appStats struct {
 // stmtStats holds per-statement statistics.
 type stmtStats struct {
 	syncutil.Mutex
+
+	// TODO(vilterp): move into proto below?
+	physicalPlan *physicalPlan
 
 	data roachpb.StatementStatistics
 }
@@ -98,6 +102,7 @@ const saveFingerprintPlanOnceEvery = 1000
 func (a *appStats) recordStatement(
 	stmt Statement,
 	plan planTop,
+	physPlan *physicalPlan,
 	distSQLUsed bool,
 	automaticRetryCount int,
 	numRows int,
@@ -142,6 +147,17 @@ func (a *appStats) recordStatement(
 	}
 	if s.data.Count%saveFingerprintPlanOnceEvery == 1 {
 		s.data.MostRecentPlan = *getPlanTree(context.Background(), plan)
+		s.physicalPlan = physPlan
+		if physPlan != nil {
+			gatewayNodeID := 1 // TODO(vilterp): actually get this
+			flows := physPlan.GenerateFlowSpecs(roachpb.NodeID(gatewayNodeID))
+			_, planURL, err := distsqlrun.GeneratePlanDiagramURL(flows)
+			if err != nil {
+				// TODO(vilterp): get an actual context
+				log.Errorf(context.Background(), "error generating plan:", err)
+			}
+			s.data.PhysPlanUrl = planURL.String()
+		}
 	}
 	if automaticRetryCount == 0 {
 		s.data.FirstAttemptCount++
