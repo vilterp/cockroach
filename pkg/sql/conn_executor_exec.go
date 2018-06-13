@@ -556,7 +556,7 @@ func (ex *connExecutor) execStmtInParallel(
 
 		planner.statsCollector.PhaseTimes()[plannerEndExecStmt] = timeutil.Now()
 		ex.recordStatementSummary(
-			planner, stmt, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
+			planner, stmt, planner.curPlan, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
 			res.RowsAffected(), err, &ex.server.EngineMetrics,
 		)
 		if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -666,6 +666,8 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	queryMeta.isDistributed = useDistSQL
 	ex.mu.Unlock()
 
+	ex.sampleLogicalPlan(stmt, err, useDistSQL, planner)
+
 	if useDistSQL {
 		err = ex.execWithDistSQLEngine(ctx, planner, stmt.AST.StatementType(), res)
 	} else {
@@ -676,7 +678,7 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 		return err
 	}
 	ex.recordStatementSummary(
-		planner, stmt, useDistSQL, ex.extraTxnState.autoRetryCounter,
+		planner, stmt, planner.curPlan, useDistSQL, ex.extraTxnState.autoRetryCounter,
 		res.RowsAffected(), res.Err(), &ex.server.EngineMetrics,
 	)
 	if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -684,6 +686,21 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	}
 
 	return nil
+}
+
+// sampleLogicalPlan copies a logical plan to appStats once every `saveFingerprintPlanOnceEvery`
+// times a fingerprint is executed. The plan is copied into a roachpb.PlanNode, which is suitable
+// for serialization so it can be shown in the UI or sent to the reg cluster (after having been
+// scrubbed).
+func (ex *connExecutor) sampleLogicalPlan(
+	stmt Statement, err error, useDistSQL bool, planner *planner,
+) {
+	stats := ex.appStats.getStatsForStmt(stmt, useDistSQL, err)
+	stats.Lock()
+	if stats.data.Count%saveFingerprintPlanOnceEvery == 0 {
+		stats.data.SensitiveInfo.MostRecentPlan = *getPlanTree(context.Background(), planner.curPlan)
+	}
+	stats.Unlock()
 }
 
 // canFallbackFromOpt returns whether we can fallback on the heuristic planner
