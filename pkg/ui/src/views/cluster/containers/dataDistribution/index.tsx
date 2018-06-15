@@ -43,7 +43,7 @@ class DataDistribution extends React.Component<DataDistributionProps> {
         <ul>
           {this.props.sortedZoneConfigs.map((zoneConfig) => (
             <li key={zoneConfig.cli_specifier} className="zone-config">
-              <h3>{zoneConfig.cli_specifier}</h3>
+              <h3>{zoneConfig.cli_specifier} ({FixLong(zoneConfig.id).toInt()})</h3>
               <pre className="zone-config__raw-yaml">
                 {zoneConfig.config_yaml}
               </pre>
@@ -76,9 +76,9 @@ class DataDistribution extends React.Component<DataDistributionProps> {
       children: _.map(databaseInfo, (dbInfo, dbName) => ({
         name: dbName,
         data: { dbName },
-        children: _.map(dbInfo.table_info, (_tableInfo, tableName) => ({
+        children: _.map(dbInfo.table_info, (tableInfo, tableName) => ({
           name: tableName,
-          data: { dbName, tableName },
+          data: { dbName, tableName, zoneConfigID: FixLong(tableInfo.zone_config_id).toInt() },
         })),
       })),
     };

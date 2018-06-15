@@ -2,6 +2,7 @@ import _ from "lodash";
 import React, { Component } from "react";
 import classNames from "classnames";
 
+import { FixLong } from "src/util/fixLong";
 import {
   TreeNode,
   TreePath,
@@ -83,9 +84,17 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     return `${arrow} ${localityLabel}`;
   }
 
-  rowLabel(row: FlattenedNode<SchemaObject>): string {
+  rowLabel(row: FlattenedNode<SchemaObject>): string | React.ReactNode {
     if (row.isLeaf) {
-      return row.data.tableName;
+      return (
+        <span>
+          {row.data.tableName}
+          {" "}
+          <span style={{ color: row.data.zoneConfigID === 0 ? "grey" : "red", fontStyle: "italic" }}>
+            (ZC {row.data.zoneConfigID})
+          </span>
+        </span>
+      );
     }
 
     const arrow = row.isCollapsed ? SIDE_ARROW : DOWN_ARROW;
@@ -195,4 +204,5 @@ export default ReplicaMatrix;
 export interface SchemaObject {
   dbName?: string;
   tableName?: string;
+  zoneConfigID?: number;
 }

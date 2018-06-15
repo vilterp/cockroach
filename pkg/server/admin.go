@@ -1365,7 +1365,6 @@ func (s *adminServer) DataDistribution(
 ) (*serverpb.DataDistributionResponse, error) {
 	resp := &serverpb.DataDistributionResponse{
 		DatabaseInfo: make(map[string]serverpb.DataDistributionResponse_DatabaseInfo),
-		ZoneConfigs:  make(map[int64]serverpb.DataDistributionResponse_ZoneConfig),
 	}
 
 	// Get ids and names for databases and tables.
@@ -1492,12 +1491,17 @@ func (s *adminServer) DataDistribution(
 			return nil, s.serverError(err)
 		}
 
-		resp.ZoneConfigs[zcID] = serverpb.DataDistributionResponse_ZoneConfig{
+		fmt.Println("zcID:", row[0], zcID)
+
+		resp.ZoneConfigs = append(resp.ZoneConfigs, serverpb.DataDistributionResponse_ZoneConfig{
+			Id:           zcID,
 			CliSpecifier: zcCliSpecifier,
 			Config:       zcProto,
 			ConfigYaml:   string(zcYaml),
-		}
+		})
 	}
+
+	fmt.Println("zoneConfigs:", resp.ZoneConfigs)
 
 	return resp, nil
 }

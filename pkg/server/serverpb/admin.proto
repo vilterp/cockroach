@@ -520,6 +520,8 @@ message DataDistributionRequest {
 
 message DataDistributionResponse {
   message ZoneConfig {
+    int64 id = 4;
+
     // cli_specifier is ".default" for the default zone config.
     // Otherwise, it's of the form [database.]table[@index[.partition]]
     string cli_specifier = 1;
@@ -545,7 +547,7 @@ message DataDistributionResponse {
   map<string, DatabaseInfo> database_info = 1 [(gogoproto.nullable) = false];
 
   // By zone config id.
-  map<int64, ZoneConfig> zone_configs = 2 [(gogoproto.nullable) = false];
+  repeated ZoneConfig zone_configs = 2 [(gogoproto.nullable) = false];
 }
 
 message QueriesRequest {
