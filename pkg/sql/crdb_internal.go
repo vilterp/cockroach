@@ -539,7 +539,7 @@ CREATE TABLE crdb_internal.node_statement_statistics (
 					anonymized = tree.NewDString(anonStr)
 				}
 
-				s := appStats.getStatsForStmt(stmtKey)
+				s := appStats.getStatsForStmtWithKey(stmtKey)
 
 				s.Lock()
 				errString := tree.DNull

@@ -695,6 +695,10 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 func (ex *connExecutor) sampleLogicalPlan(
 	stmt Statement, err error, useDistSQL bool, planner *planner,
 ) {
+	if _, ok := stmt.AST.(tree.HiddenFromStats); ok {
+		return
+	}
+
 	stats := ex.appStats.getStatsForStmt(stmt, useDistSQL, err)
 	stats.Lock()
 	if stats.data.Count%saveFingerprintPlanOnceEvery == 0 {

@@ -164,6 +164,10 @@ func (a *appStats) getStatsForStmt(stmt Statement, useDistSQL bool, err error) *
 		key.stmt = anonymizeStmt(stmt)
 	}
 
+	return a.getStatsForStmtWithKey(key)
+}
+
+func (a *appStats) getStatsForStmtWithKey(key stmtKey) *stmtStats {
 	a.Lock()
 	// Retrieve the per-statement statistic object, and create it if it
 	// doesn't exist yet.
