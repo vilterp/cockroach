@@ -97,7 +97,7 @@ const saveFingerprintPlanOnceEvery = 1000
 
 func (a *appStats) recordStatement(
 	stmt Statement,
-	plan planTop,
+	plan *roachpb.PlanNode,
 	distSQLUsed bool,
 	automaticRetryCount int,
 	numRows int,
@@ -131,13 +131,16 @@ func (a *appStats) recordStatement(
 	}
 
 	// Get the statistics object.
-	s := a.getStatsForStmt(stmt, distSQLUsed, err)
+	s := a.getStatsForStmt(stmt, distSQLUsed, err, true /* createIfNonexistent */)
 
 	// Collect the per-statement statistics.
 	s.Lock()
 	s.data.Count++
 	if err != nil {
 		s.data.SensitiveInfo.LastErr = err.Error()
+	}
+	if plan != nil {
+		s.data.SensitiveInfo.MostRecentPlan = *plan
 	}
 	if automaticRetryCount == 0 {
 		s.data.FirstAttemptCount++
@@ -154,7 +157,9 @@ func (a *appStats) recordStatement(
 }
 
 // getStatsForStmt retrieves the per-stmt stat object.
-func (a *appStats) getStatsForStmt(stmt Statement, useDistSQL bool, err error) *stmtStats {
+func (a *appStats) getStatsForStmt(
+	stmt Statement, useDistSQL bool, err error, createIfNonexistent bool,
+) *stmtStats {
 	// Construct the key for this statement.
 	key := stmtKey{failed: err != nil, distSQLUsed: useDistSQL}
 	if stmt.AnonymizedStr != "" {
@@ -164,15 +169,15 @@ func (a *appStats) getStatsForStmt(stmt Statement, useDistSQL bool, err error) *
 		key.stmt = anonymizeStmt(stmt)
 	}
 
-	return a.getStatsForStmtWithKey(key)
+	return a.getStatsForStmtWithKey(key, createIfNonexistent)
 }
 
-func (a *appStats) getStatsForStmtWithKey(key stmtKey) *stmtStats {
+func (a *appStats) getStatsForStmtWithKey(key stmtKey, createIfNonexistent bool) *stmtStats {
 	a.Lock()
 	// Retrieve the per-statement statistic object, and create it if it
 	// doesn't exist yet.
 	s, ok := a.stmts[key]
-	if !ok {
+	if !ok && createIfNonexistent {
 		s = &stmtStats{}
 		a.stmts[key] = s
 	}

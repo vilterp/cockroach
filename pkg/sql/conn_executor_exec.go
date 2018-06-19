@@ -555,8 +555,9 @@ func (ex *connExecutor) execStmtInParallel(
 		err := ex.execWithLocalEngine(ctx, planner, stmt.AST.StatementType(), res)
 
 		planner.statsCollector.PhaseTimes()[plannerEndExecStmt] = timeutil.Now()
+		copiedPlan := ex.sampleLogicalPlan(stmt, false /* useDistSQL */, planner)
 		ex.recordStatementSummary(
-			planner, stmt, planner.curPlan, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
+			planner, stmt, copiedPlan, false /* distSQLUsed*/, ex.extraTxnState.autoRetryCounter,
 			res.RowsAffected(), err, &ex.server.EngineMetrics,
 		)
 		if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -666,7 +667,7 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	queryMeta.isDistributed = useDistSQL
 	ex.mu.Unlock()
 
-	ex.sampleLogicalPlan(stmt, err, useDistSQL, planner)
+	copiedPlan := ex.sampleLogicalPlan(stmt, useDistSQL, planner)
 
 	if useDistSQL {
 		err = ex.execWithDistSQLEngine(ctx, planner, stmt.AST.StatementType(), res)
@@ -678,7 +679,7 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 		return err
 	}
 	ex.recordStatementSummary(
-		planner, stmt, planner.curPlan, useDistSQL, ex.extraTxnState.autoRetryCounter,
+		planner, stmt, copiedPlan, useDistSQL, ex.extraTxnState.autoRetryCounter,
 		res.RowsAffected(), res.Err(), &ex.server.EngineMetrics,
 	)
 	if ex.server.cfg.TestingKnobs.AfterExecute != nil {
@@ -688,23 +689,30 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	return nil
 }
 
-// sampleLogicalPlan copies a logical plan to appStats once every `saveFingerprintPlanOnceEvery`
-// times a fingerprint is executed. The plan is copied into a roachpb.PlanNode, which is suitable
-// for serialization so it can be shown in the UI or sent to the reg cluster (after having been
-// scrubbed).
+// TODO(vilterp) add a comment
 func (ex *connExecutor) sampleLogicalPlan(
-	stmt Statement, err error, useDistSQL bool, planner *planner,
-) {
+	stmt Statement, useDistSQL bool, planner *planner,
+) *roachpb.PlanNode {
+	// TODO(vilterp): introduce and check a cluster setting to turn this off
+
 	if _, ok := stmt.AST.(tree.HiddenFromStats); ok {
-		return
+		return nil
 	}
 
-	stats := ex.appStats.getStatsForStmt(stmt, useDistSQL, err)
-	stats.Lock()
-	if stats.data.Count%saveFingerprintPlanOnceEvery == 0 {
-		stats.data.SensitiveInfo.MostRecentPlan = *getPlanTree(context.Background(), planner.curPlan)
+	stats := ex.appStats.getStatsForStmt(stmt, useDistSQL, nil, false /* createIfNonexistent */)
+
+	doTheThing := true
+	if stats != nil {
+		stats.Lock()
+		defer stats.Unlock()
+
+		doTheThing = stats.data.Count%saveFingerprintPlanOnceEvery == 0
 	}
-	stats.Unlock()
+
+	if doTheThing {
+		return getPlanTree(context.Background(), planner.curPlan)
+	}
+	return nil
 }
 
 // canFallbackFromOpt returns whether we can fallback on the heuristic planner
