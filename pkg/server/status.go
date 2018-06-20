@@ -1546,6 +1546,73 @@ func (s *statusServer) Stores(
 	return resp, nil
 }
 
+// LeaseholdersAndQPS combs through the information in the RaftDebug endpoint,
+// only returning leaseholder and QPS info. It also decodes range keys so they
+// can be assigned to tables.
+func (s *statusServer) LeaseholdersAndQPS(
+	ctx context.Context, req *serverpb.LeaseholdersAndQPSRequest,
+) (*serverpb.LeaseholdersAndQPSResponse, error) {
+	raftResp, err := s.RaftDebug(ctx, &serverpb.RaftDebugRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &serverpb.LeaseholdersAndQPSResponse{}
+
+	tableInfos := map[int32]*serverpb.LeaseholdersAndQPSResponse_TableInfo{}
+
+	for rangeID, rangeStatus := range raftResp.Ranges {
+		rangeInfo := serverpb.LeaseholdersAndQPSResponse_RangeInfo{
+			ID:          rangeID,
+			ReplicaInfo: map[roachpb.NodeID]serverpb.LeaseholdersAndQPSResponse_ReplicaInfo{},
+		}
+		var tableInfo *serverpb.LeaseholdersAndQPSResponse_TableInfo
+		// get replicas
+		for _, replInfo := range rangeStatus.Nodes {
+			replicaInfo := serverpb.LeaseholdersAndQPSResponse_ReplicaInfo{}
+			// map to table
+			startKey := replInfo.Range.State.Desc.StartKey.AsRawKey()
+			_, tableID, err := keys.DecodeTablePrefix(startKey)
+			if err != nil {
+				// don't care about non-table ranges (for now)
+				break
+			}
+			maybeTableInfo, ok := tableInfos[int32(tableID)]
+			if ok {
+				tableInfo = maybeTableInfo
+			} else {
+				tableInfo = &serverpb.LeaseholdersAndQPSResponse_TableInfo{
+					ID: int32(tableID),
+				}
+				tableInfos[int32(tableID)] = tableInfo
+			}
+
+			// get stats & leaseholder
+			replicaInfo.Stats = replInfo.Range.Stats
+			// this seems complicated... each node has its own idea of the lease
+			// they might disagree.
+			if replInfo.Range.LeaseStatus.Lease.Replica.NodeID == replInfo.NodeID {
+				rangeInfo.LeaseholderNodeID = replInfo.NodeID
+			}
+
+			rangeInfo.ReplicaInfo[replInfo.NodeID] = replicaInfo
+		}
+
+		if tableInfo != nil {
+			tableInfo.RangeInfos = append(tableInfo.RangeInfos, rangeInfo)
+		}
+	}
+
+	// TODO(vilterp): figure out a way to get rid of this loop
+	// just because we have to use pointers above
+	resp.TableInfos = map[int32]serverpb.LeaseholdersAndQPSResponse_TableInfo{}
+	for tableID, tableInfo := range tableInfos {
+		resp.TableInfos[tableID] = *tableInfo
+	}
+
+	return resp, nil
+}
+
 // jsonWrapper provides a wrapper on any slice data type being
 // marshaled to JSON. This prevents a security vulnerability
 // where a phishing attack can trick a user's browser into
