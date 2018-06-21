@@ -633,7 +633,10 @@ message LeaseholdersAndQPSResponse {
   message TableInfo {
     int32 id = 1 [(gogoproto.customname) = "ID"];
 
-    repeated RangeInfo range_infos = 2 [(gogoproto.nullable) = false];
+    map<int32, RangeInfo> range_infos = 2 [
+      (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID",
+      (gogoproto.nullable) = false
+    ];
   }
 
   map<int32, TableInfo> table_infos = 1 [(gogoproto.nullable) = false];

@@ -1582,7 +1582,8 @@ func (s *statusServer) LeaseholdersAndQPS(
 				tableInfo = maybeTableInfo
 			} else {
 				tableInfo = &serverpb.LeaseholdersAndQPSResponse_TableInfo{
-					ID: int32(tableID),
+					ID:         int32(tableID),
+					RangeInfos: map[roachpb.RangeID]serverpb.LeaseholdersAndQPSResponse_RangeInfo{},
 				}
 				tableInfos[int32(tableID)] = tableInfo
 			}
@@ -1599,7 +1600,7 @@ func (s *statusServer) LeaseholdersAndQPS(
 		}
 
 		if tableInfo != nil {
-			tableInfo.RangeInfos = append(tableInfo.RangeInfos, rangeInfo)
+			tableInfo.RangeInfos[rangeInfo.ID] = rangeInfo
 		}
 	}
 
