@@ -84,16 +84,24 @@ class DataDistribution extends React.Component<DataDistributionProps> {
   }
 
   getLeaseholderCount(dbPath: TreePath, nodePath: TreePath): number {
-    // TODO
+    const nodeID = nodePath[nodePath.length - 1];
+    const range = this.getRangeAtPath(dbPath);
+
+    if (!range) {
+      return 0;
+    }
+
+    const isLeaseholder = range.leaseholder_node_id.toString() === nodeID;
+    return isLeaseholder ? 1 : 0;
   }
 
   getQPS(dbPath: TreePath, nodePath: TreePath): number {
-    // TODO
+    const replica = this.getReplicaAtPaths(dbPath, nodePath);
+
+    return replica ? Math.round(replica.stats.queries_per_second) : 0;
   }
 
   getReplicaCount(dbPath: TreePath, nodePath: TreePath): number {
-    console.log("getReplicaCount:", dbPath, nodePath);
-
     const replica = this.getReplicaAtPaths(dbPath, nodePath);
 
     return replica ? 1 : 0;
@@ -114,14 +122,18 @@ class DataDistribution extends React.Component<DataDistributionProps> {
     return id;
   }
 
-  getReplicaAtPaths(dbPath: TreePath, nodePath: TreePath): ReplicaInfo$Properties {
-    const nodeID = nodePath[nodePath.length - 1];
-
+  getRangeAtPath(dbPath: TreePath): RangeInfo$Properties {
     const tableName = dbPath[1];
     const rangeID = dbPath[2];
     const tableID = this.tableIDForName(tableName);
     const ranges = this.getRangesForTableID(tableID);
-    const range = ranges[rangeID];
+    return ranges[rangeID];
+  }
+
+  getReplicaAtPaths(dbPath: TreePath, nodePath: TreePath): ReplicaInfo$Properties {
+    const nodeID = nodePath[nodePath.length - 1];
+
+    const range = this.getRangeAtPath(dbPath);
     if (!range) {
       return null; // TODO(vilterp) under what circumstances does this happen?
     }
