@@ -1,6 +1,7 @@
 import d3 from "d3";
 import _ from "lodash";
 import React, { Component } from "react";
+import { Link } from "react-router";
 import classNames from "classnames";
 
 import {
@@ -115,28 +116,28 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     return `${arrow} ${localityLabel}`;
   }
 
-  rowLabel(row: FlattenedNode<SchemaObject>): string {
+  rowLabel(row: FlattenedNode<SchemaObject>) {
     const data = row.node.data;
 
     if (data.rangeID) {
-      return `r${data.rangeID}`;
+      return <Link to={`/reports/range/${data.rangeID}`}>r{data.rangeID}</Link>;
     }
 
     if (data.tableName) {
-      return data.tableName;
+      return <Link to={`/database/${data.dbName}/table/${data.tableName}`}>{data.tableName}</Link>;
     }
 
     return data.dbName ? `DB: ${data.dbName}` : "Cluster";
   }
 
-  rowLabelAndArrow(row: FlattenedNode<SchemaObject>): string {
+  rowLabelAndArrow(row: FlattenedNode<SchemaObject>) {
     const label = this.rowLabel(row);
     const arrow = row.isCollapsed ? SIDE_ARROW : DOWN_ARROW;
 
     if (row.isLeaf) {
       return label;
     } else {
-      return `${arrow} ${label}`;
+      return <span>{arrow} {label}</span>;
     }
   }
 
