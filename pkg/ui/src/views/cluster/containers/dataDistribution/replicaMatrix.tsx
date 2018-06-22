@@ -108,7 +108,7 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     }
 
     if (col.isLeaf) {
-      return <Link to={`/node/${col.data.node_id}`}>n{col.data.node_id}</Link>;
+      return <CustomLink to={`/node/${col.data.node_id}`}>n{col.data.node_id}</CustomLink>;
     }
 
     const arrow = col.isCollapsed ? SIDE_ARROW : DOWN_ARROW;
@@ -120,11 +120,19 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     const data = row.node.data;
 
     if (data.rangeID) {
-      return <Link to={`/reports/range/${data.rangeID}`}>r{data.rangeID}</Link>;
+      return (
+        <CustomLink to={`/reports/range/${data.rangeID}`}>
+          r{data.rangeID}
+        </CustomLink>
+      );
     }
 
     if (data.tableName) {
-      return <Link to={`/database/${data.dbName}/table/${data.tableName}`}>{data.tableName}</Link>;
+      return (
+        <CustomLink to={`/database/${data.dbName}/table/${data.tableName}`}>
+          {data.tableName}
+        </CustomLink>
+      );
     }
 
     return data.dbName ? `DB: ${data.dbName}` : "Cluster";
@@ -325,6 +333,14 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     );
   }
 
+}
+
+function CustomLink(props: { to: string, children: React.ReactNode }) {
+  return (
+    <Link to={props.to} target="_blank" onClick={(evt) => evt.stopPropagation()}>
+      {props.children}
+    </Link>
+  );
 }
 
 // Selectors
