@@ -20,10 +20,19 @@ import { createSelector } from "reselect";
 const DOWN_ARROW = "▼";
 const SIDE_ARROW = "▶";
 
+const PAGE_SIZE = 2;
+
+interface PaginationState {
+  path: TreePath;
+  page: number;
+  sort: "ASC" | "DESC";
+}
+
 interface ReplicaMatrixState {
   collapsedRows: TreePath[];
   collapsedCols: TreePath[];
   selectedMetric: string;
+  paginatedPaths: PaginationState[];
 }
 
 interface ReplicaMatrixProps {
@@ -65,6 +74,7 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
       collapsedRows: collapsedPaths,
       collapsedCols: [],
       selectedMetric: METRIC_REPLICAS,
+      paginatedPaths: [],
     };
   }
 
@@ -107,15 +117,17 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
   }
 
   rowLabel(row: FlattenedNode<SchemaObject>): string {
-    if (row.data.rangeID) {
-      return `r${row.data.rangeID}`;
+    const data = row.node.data;
+
+    if (data.rangeID) {
+      return `r${data.rangeID}`;
     }
 
-    if (row.data.tableName) {
-      return row.data.tableName;
+    if (data.tableName) {
+      return data.tableName;
     }
 
-    return row.data.dbName ? `DB: ${row.data.dbName}` : "Cluster";
+    return data.dbName ? `DB: ${data.dbName}` : "Cluster";
   }
 
   rowLabelAndArrow(row: FlattenedNode<SchemaObject>): string {
@@ -177,6 +189,24 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     );
   }
 
+  handleChangePage = (rowPath: TreePath, delta: number) => {
+    this.setState({
+      paginatedPaths: putAssocList(this.state.paginatedPaths, rowPath, (ps) => {
+        if (ps) {
+          return {
+            ...ps,
+            page: ps.page + delta,
+          };
+        }
+        return {
+          page: 1, // paging to the right for the first time
+          path: rowPath,
+          sort: "DESC",
+        };
+      }),
+    });
+  }
+
   render() {
     const {
       cols,
@@ -227,7 +257,11 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
         </thead>
         <tbody>
           {flattenedRows.map((row) => {
-            return (
+            const paginationState = getAssocList(this.state.paginatedPaths, row.path);
+            const page = paginationState ? paginationState.page : 0;
+            const numPages = Math.ceil(row.node.children.length / PAGE_SIZE);
+
+            return [
               <tr
                 key={row.path.join("/")}
                 className={classNames(
@@ -259,8 +293,30 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
                     </td>
                   );
                 })}
-              </tr>
-            );
+              </tr>,
+              (row.isPaginated && !(row.isCollapsed || row.isLeaf))
+                ? <tr>
+                    <td />
+                    <td colSpan={flattenedCols.length} style={{ padding: 5 }}>
+                      <button
+                        onClick={() => this.handleChangePage(row.path, -1)}
+                        disabled={page === 0}
+                      >
+                        &lt; Prev
+                      </button>
+                      {" "}
+                      {page + 1} out of {numPages}
+                      {" "}
+                      <button
+                        onClick={() => this.handleChangePage(row.path, 1)}
+                        disabled={page === numPages - 1}
+                      >
+                        Next &gt;
+                      </button>
+                    </td>
+                  </tr>
+                : null,
+            ];
           })}
         </tbody>
       </table>
@@ -268,6 +324,8 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
   }
 
 }
+
+// Selectors
 
 interface PropsAndState {
   props: ReplicaMatrixProps;
@@ -279,7 +337,7 @@ const selectFlattenedRows = createSelector(
   (propsAndState: PropsAndState) => propsAndState.state.collapsedRows,
   (rows: TreeNode<SchemaObject>, collapsedRows: TreePath[]) => {
     console.log("flattening rows");
-    return flatten(rows, collapsedRows, true /* includeNodes */);
+    return flatten(rows, collapsedRows, true /* includeNodes */, PAGE_SIZE);
   },
 );
 
@@ -337,9 +395,50 @@ const selectScale = createSelector(
 
 export default ReplicaMatrix;
 
+// Helpers
+
 export interface SchemaObject {
   dbName?: string;
   tableName?: string;
   tableID?: number;
   rangeID?: string;
+}
+
+// my best attempt to not pull in Immutable.js
+function putAssocList(
+  list: PaginationState[],
+  path: TreePath,
+  update: (ps: PaginationState) => PaginationState,
+): PaginationState[] {
+  let found = false;
+  const output: PaginationState[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const state = list[i];
+    if (_.isEqual(state.path, path)) {
+      if (found) {
+        throw Error(`dup in putAssocList: ${path}`);
+      }
+      output.push(update(state));
+      found = true;
+    } else {
+      output.push(state);
+    }
+  }
+  if (!found) {
+    output.push(update(null));
+  }
+  return output;
+}
+
+function getAssocList(
+  list: PaginationState[],
+  path: TreePath,
+): PaginationState {
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    if (_.isEqual(item.path, path)) {
+      return item;
+    }
+  }
+  return null;
 }

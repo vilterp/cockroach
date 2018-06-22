@@ -24,7 +24,7 @@ export function isLeaf<T>(t: TreeNode<T>): boolean {
  * Is represented as:
  *
  *    [ [             <LayoutCell for a>         ],
- *     [ <LayoutCell for b>, <LayoutCell for c> ] ]
+ *      [ <LayoutCell for b>, <LayoutCell for c> ] ]
  *
  */
 export type Layout<T> = LayoutCell<T>[][];
@@ -231,8 +231,9 @@ export interface FlattenedNode<T> {
   depth: number;
   isLeaf: boolean;
   isCollapsed: boolean;
-  data: T;
+  node: TreeNode<T>;
   path: TreePath;
+  isPaginated: boolean;
 }
 
 /**
@@ -288,19 +289,26 @@ export function flatten<T>(
   tree: TreeNode<T>,
   collapsedPaths: TreePath[],
   includeInternalNodes: boolean,
+  pageSize: number = Infinity,
 ): FlattenedNode<T>[] {
   const output: FlattenedNode<T>[] = [];
 
-  visitNodes(tree, (node: TreeNode<T>, pathSoFar: TreePath): boolean => {
+  visitNodes(tree, (node: TreeNode<T>, pathSoFar: TreePath, childIdx: number): boolean => {
     const depth = pathSoFar.length;
+
+    // TODO(vilterp): account for what page we're on
+    if (childIdx > pageSize) {
+      return false;
+    }
 
     if (isLeaf(node)) {
       output.push({
         depth,
         isLeaf: true,
         isCollapsed: false,
-        data: node.data,
+        node,
         path: pathSoFar,
+        isPaginated: false,
       });
       return true;
     }
@@ -312,8 +320,9 @@ export function flatten<T>(
         depth,
         isLeaf: false,
         isCollapsed: !isExpanded,
-        data: node.data,
+        node,
         path: pathSoFar,
+        isPaginated: (node.children || []).length > pageSize,
       });
     }
 
@@ -347,19 +356,23 @@ function nodeAtPath<T>(root: TreeNode<T>, path: TreePath): TreeNode<T> {
  * If `f` returns false, the traversal stops. Otherwise, the traversal
  * continues.
  */
-export function visitNodes<T>(root: TreeNode<T>, f: (node: TreeNode<T>, path: TreePath) => boolean) {
-  function recur(node: TreeNode<T>, path: TreePath) {
-    const continueTraversal = f(node, path);
+export function visitNodes<T>(
+  root: TreeNode<T>,
+  f: (node: TreeNode<T>, path: TreePath, childIdx: number) => boolean,
+) {
+  function recur(node: TreeNode<T>, path: TreePath, childIdx: number) {
+    const continueTraversal = f(node, path, childIdx);
     if (!continueTraversal) {
       return;
     }
     if (node.children) {
-      node.children.forEach((child) => {
-        recur(child, [...path, child.name]);
-      });
+      for (let i = 0; i < node.children.length; i++) {
+        const child = node.children[i];
+        recur(child, [...path, child.name], i);
+      }
     }
   }
-  recur(root, []);
+  recur(root, [], 0);
 }
 
 /**
