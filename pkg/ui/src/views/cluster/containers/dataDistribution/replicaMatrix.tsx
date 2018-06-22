@@ -10,29 +10,28 @@ import {
   flatten,
   sumValuesUnderPaths,
   LayoutCell,
-  FlattenedNode, visitNodes,
+  FlattenedNode, visitNodes, PaginationState,
 } from "./tree";
 import { cockroach } from "src/js/protos";
 import NodeDescriptor$Properties = cockroach.roachpb.NodeDescriptor$Properties;
 import "./replicaMatrix.styl";
 import { createSelector } from "reselect";
+import {
+  AssocList,
+  getAssocList,
+  putAssocList,
+} from "src/views/cluster/containers/dataDistribution/assocList";
 
 const DOWN_ARROW = "▼";
 const SIDE_ARROW = "▶";
 
-const PAGE_SIZE = 2;
-
-interface PaginationState {
-  path: TreePath;
-  page: number;
-  sort: "ASC" | "DESC";
-}
+const PAGE_SIZE = 10;
 
 interface ReplicaMatrixState {
   collapsedRows: TreePath[];
   collapsedCols: TreePath[];
   selectedMetric: string;
-  paginatedPaths: PaginationState[];
+  paginatedPaths: AssocList<TreePath, PaginationState>;
 }
 
 interface ReplicaMatrixProps {
@@ -143,7 +142,7 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
 
   handleChangeMetric = (evt: React.FormEvent<HTMLSelectElement>) => {
     this.setState({
-      selectedMetric: evt.target.value,
+      selectedMetric: evt.currentTarget.value,
     });
   }
 
@@ -201,7 +200,7 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
         return {
           page: 1, // paging to the right for the first time
           path: rowPath,
-          sort: "DESC",
+          sortDesc: true,
         };
       }),
     });
@@ -259,7 +258,9 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
           {flattenedRows.map((row) => {
             const paginationState = getAssocList(this.state.paginatedPaths, row.path);
             const page = paginationState ? paginationState.page : 0;
-            const numPages = Math.ceil(row.node.children.length / PAGE_SIZE);
+            const children = row.node.children;
+            const numChildren = children ? children.length : 0;
+            const numPages = Math.ceil(numChildren / PAGE_SIZE);
 
             return [
               <tr
@@ -335,9 +336,14 @@ interface PropsAndState {
 const selectFlattenedRows = createSelector(
   (propsAndState: PropsAndState) => propsAndState.props.rows,
   (propsAndState: PropsAndState) => propsAndState.state.collapsedRows,
-  (rows: TreeNode<SchemaObject>, collapsedRows: TreePath[]) => {
+  (propsAndState: PropsAndState) => propsAndState.state.paginatedPaths,
+  (
+    rows: TreeNode<SchemaObject>,
+    collapsedRows: TreePath[],
+    paginationStates: AssocList<TreePath, PaginationState>,
+  ) => {
     console.log("flattening rows");
-    return flatten(rows, collapsedRows, true /* includeNodes */, PAGE_SIZE);
+    return flatten(rows, collapsedRows, true /* includeNodes */, paginationStates, PAGE_SIZE);
   },
 );
 
@@ -395,50 +401,9 @@ const selectScale = createSelector(
 
 export default ReplicaMatrix;
 
-// Helpers
-
 export interface SchemaObject {
   dbName?: string;
   tableName?: string;
   tableID?: number;
   rangeID?: string;
-}
-
-// my best attempt to not pull in Immutable.js
-function putAssocList(
-  list: PaginationState[],
-  path: TreePath,
-  update: (ps: PaginationState) => PaginationState,
-): PaginationState[] {
-  let found = false;
-  const output: PaginationState[] = [];
-  for (let i = 0; i < list.length; i++) {
-    const state = list[i];
-    if (_.isEqual(state.path, path)) {
-      if (found) {
-        throw Error(`dup in putAssocList: ${path}`);
-      }
-      output.push(update(state));
-      found = true;
-    } else {
-      output.push(state);
-    }
-  }
-  if (!found) {
-    output.push(update(null));
-  }
-  return output;
-}
-
-function getAssocList(
-  list: PaginationState[],
-  path: TreePath,
-): PaginationState {
-  for (let i = 0; i < list.length; i++) {
-    const item = list[i];
-    if (_.isEqual(item.path, path)) {
-      return item;
-    }
-  }
-  return null;
 }

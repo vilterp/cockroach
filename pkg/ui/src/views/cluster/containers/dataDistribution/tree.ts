@@ -1,4 +1,5 @@
 import _ from "lodash";
+import {AssocList, getAssocList} from "oss/src/views/cluster/containers/dataDistribution/assocList";
 
 export interface TreeNode<T> {
   name: string;
@@ -236,6 +237,12 @@ export interface FlattenedNode<T> {
   isPaginated: boolean;
 }
 
+export interface PaginationState {
+  path: TreePath;
+  page: number;
+  sortDesc: boolean;
+}
+
 /**
  * flatten takes a tree and returns it as an array with depth information.
  *
@@ -289,17 +296,14 @@ export function flatten<T>(
   tree: TreeNode<T>,
   collapsedPaths: TreePath[],
   includeInternalNodes: boolean,
-  pageSize: number = Infinity,
+  paginationStates: AssocList<TreePath, PaginationState> = [],
+  pageSize: number = 2 ** 32, // TODO(vilterp): ugh
 ): FlattenedNode<T>[] {
   const output: FlattenedNode<T>[] = [];
+  recur(tree, []);
 
-  visitNodes(tree, (node: TreeNode<T>, pathSoFar: TreePath, childIdx: number): boolean => {
+  function recur(node: TreeNode<T>, pathSoFar: TreePath) {
     const depth = pathSoFar.length;
-
-    // TODO(vilterp): account for what page we're on
-    if (childIdx > pageSize) {
-      return false;
-    }
 
     if (isLeaf(node)) {
       output.push({
@@ -326,9 +330,19 @@ export function flatten<T>(
       });
     }
 
-    // Continue the traversal if this node is expanded.
-    return isExpanded;
-  });
+    if (isExpanded && node.children) {
+      const paginationState = getAssocList(paginationStates, pathSoFar);
+      const page = paginationState
+        ? paginationState.page
+        : 0;
+      const offset = page * pageSize;
+
+      for (let i = offset; i < Math.min(node.children.length, offset + pageSize); i++) {
+        const child = node.children[i];
+        recur(child, [...pathSoFar, child.name]);
+      }
+    }
+  }
 
   return output;
 }
