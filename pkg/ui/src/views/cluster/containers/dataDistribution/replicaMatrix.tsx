@@ -102,18 +102,18 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     });
   }
 
-  colLabel(col: LayoutCell<NodeDescriptor$Properties>): string {
+  colLabel(col: LayoutCell<NodeDescriptor$Properties>) {
     if (col.isPlaceholder) {
       return null;
     }
 
     if (col.isLeaf) {
-      return `n${col.data.node_id}`;
+      return <Link to={`/node/${col.data.node_id}`}>n{col.data.node_id}</Link>;
     }
 
     const arrow = col.isCollapsed ? SIDE_ARROW : DOWN_ARROW;
     const localityLabel = col.path.length === 0 ? "Cluster" : col.path[col.path.length - 1];
-    return `${arrow} ${localityLabel}`;
+    return <span>{arrow} {localityLabel}</span>;
   }
 
   rowLabel(row: FlattenedNode<SchemaObject>) {
