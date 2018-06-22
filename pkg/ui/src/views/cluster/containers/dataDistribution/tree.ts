@@ -297,7 +297,7 @@ export function flatten<T>(
   collapsedPaths: TreePath[],
   includeInternalNodes: boolean,
   paginationStates: AssocList<TreePath, PaginationState> = [],
-  pageSize: number = 2 ** 32, // TODO(vilterp): ugh
+  pageSize: number = Number.MAX_VALUE,
 ): FlattenedNode<T>[] {
   const output: FlattenedNode<T>[] = [];
   recur(tree, []);
