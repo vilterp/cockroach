@@ -22,6 +22,7 @@ import {
   getAssocList,
   putAssocList,
 } from "src/views/cluster/containers/dataDistribution/assocList";
+import { Bytes } from "src/util/format";
 
 const DOWN_ARROW = "▼";
 const SIDE_ARROW = "▶";
@@ -167,6 +168,15 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
     );
   }
 
+  formatValue(value: number) {
+    switch (this.state.selectedMetric) {
+      case METRIC_LIVE_BYTES:
+        return Bytes(value);
+      default:
+        return value;
+    }
+  }
+
   renderCell(
     row: FlattenedNode<SchemaObject>,
     col: FlattenedNode<NodeDescriptor$Properties>,
@@ -194,7 +204,7 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
         className="matrix__cell-value"
         style={{ backgroundColor: backgroundColor, color: textColor }}
       >
-        {value}
+        {this.formatValue(value)}
       </div>
     );
   }
