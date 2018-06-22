@@ -270,7 +270,7 @@ const selectSchemaTree = createSelector(
   (props: DataDistributionProps) => props.dataDistribution,
   (props: DataDistributionProps) => props.leaseholdersAndQPS,
   (dataDistribution: DataDistributionResponse, leaseholdersAndQPS: LeaseholdersAndQPSResponse) => {
-    console.log("construct schema tree");
+    console.log("computing schema tree");
     return {
       name: "Cluster",
       data: { dbName: null, tableName: null },
@@ -293,6 +293,8 @@ const selectSchemaTree = createSelector(
     };
   },
 );
+
+// Connected Component
 
 // tslint:disable-next-line:variable-name
 const DataDistributionPageConnected = connect(
