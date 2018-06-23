@@ -11,7 +11,7 @@ import {
   flatten,
   sumValuesUnderPaths,
   LayoutCell,
-  FlattenedNode, visitNodes, PaginationState, SortState,
+  FlattenedNode, visitNodes, PaginationState, SortState, isLeaf,
 } from "./tree";
 import { cockroach } from "src/js/protos";
 import NodeDescriptor$Properties = cockroach.roachpb.NodeDescriptor$Properties;
@@ -276,6 +276,8 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
   }
 
   render() {
+    console.log("======== ReplicaMatrix render ========");
+
     const {
       cols,
     } = this.props;
@@ -294,6 +296,9 @@ class ReplicaMatrix extends Component<ReplicaMatrixProps, ReplicaMatrixState> {
 
     const { allVals: valuesArray } = selectAllVals(propsAndState);
     const scale = selectScale(propsAndState);
+
+    const masterGrid = selectMasterGrid(propsAndState);
+    console.log({ masterGrid });
 
     return (
       <table className="matrix">
@@ -416,6 +421,7 @@ const selectGetValueFun = createSelector(
     selectedMetric: string,
     getValue: (metric: string) => (rowPath: TreePath, colPath: TreePath) => number,
   ) => {
+    console.log("computing selectGetValueFun");
     return getValue(selectedMetric);
   },
 );
@@ -492,6 +498,43 @@ const selectScale = createSelector(
     return d3.scale.linear()
       .domain([0, extent[1]])
       .range([100, 50]); // TODO(vilterp): factor these out into constants
+  },
+);
+
+const selectMasterGrid = createSelector(
+  (propsAndState: PropsAndState) => propsAndState.props.rows,
+  (propsAndState: PropsAndState) => propsAndState.props.cols,
+  selectGetValueFun,
+  (
+    rows: TreeNode<SchemaObject>,
+    cols: TreeNode<NodeDescriptor$Properties>,
+    getValue: (rowPath: TreePath, colPath: TreePath) => number,
+  ) => {
+    console.log("computing master grid");
+    const outputRows: number[][] = [];
+    // First pass... All leaf values
+    visitNodes(rows, (row, rowPath) => {
+      const outputRow: number[] = [];
+      visitNodes(cols, (col, colPath) => {
+        if (isLeaf(row) && isLeaf(col)) {
+          const value = getValue(rowPath, colPath);
+          outputRow.push(value);
+        } else {
+          outputRow.push(0);
+        }
+        return true;
+      });
+      outputRows.push(outputRow);
+      return true;
+    });
+    // Second pass: sums
+    // function recurRows(rowIdx: number, rowNode: TreeNode<SchemaObject>) {
+    //   if (isLeaf(rowNode)) {
+    //
+    //   }
+    // }
+    // recurRows(0, 0, rows, cols);
+    return outputRows;
   },
 );
 
