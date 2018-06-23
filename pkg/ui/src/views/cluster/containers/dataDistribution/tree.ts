@@ -301,7 +301,7 @@ export interface PaginationState {
  *
  */
 export function flatten<T>(
-  tree: TreeNode<T>,
+  tree: TreeWithSize<T>,
   collapsedPaths: TreePath[],
   includeInternalNodes: boolean,
   paginationStates: AssocList<TreePath, PaginationState> = [],
@@ -311,15 +311,15 @@ export function flatten<T>(
   const output: FlattenedNode<T>[] = [];
   recur(tree, [], 0);
 
-  function recur(node: TreeNode<T>, pathSoFar: TreePath, masterIdx: number): number {
+  function recur(node: TreeWithSize<T>, pathSoFar: TreePath, masterIdx: number): number {
     const depth = pathSoFar.length;
 
-    if (isLeaf(node)) {
+    if (isLeaf(node.node)) {
       output.push({
         depth,
         isLeaf: true,
         isCollapsed: false,
-        node,
+        node: node.node,
         path: pathSoFar,
         isPaginated: false,
         masterIdx,
@@ -336,7 +336,7 @@ export function flatten<T>(
         depth,
         isLeaf: false,
         isCollapsed: !isExpanded,
-        node,
+        node: node.node,
         path: pathSoFar,
         isPaginated: (node.children || []).length > pageSize,
         masterIdx,
@@ -359,15 +359,15 @@ export function flatten<T>(
 
         for (let i = 0; i < offset; i++) {
           const child = sortedChildren[i];
-          increase += countNodes(child);
+          increase += child.size;
         }
 
         for (let i = offset; i < Math.min(sortedChildren.length, offset + pageSize); i++) {
           const child = sortedChildren[i];
-          increase += recur(child, [...pathSoFar, child.name], masterIdx + increase);
+          increase += recur(child, [...pathSoFar, child.node.name], masterIdx + increase);
         }
       } else {
-        increase += countNodes(node) - 1;
+        increase += node.size - 1; // -1 since we already added the node itself
       }
     }
 
@@ -377,21 +377,12 @@ export function flatten<T>(
   return output;
 }
 
-function countNodes<T>(node: TreeNode<T>) {
-  let i = 0;
-  visitNodes(node, () => {
-    i++;
-    return true;
-  });
-  return i;
-}
-
 function sortChildren<T>(
-  children: TreeNode<T>[],
+  children: TreeWithSize<T>[],
   pathSoFar: TreePath,
   sortState: SortState,
   sortBy?: (path: TreePath) => number,
-): TreeNode<T>[] {
+): TreeWithSize<T>[] {
   if (sortState === SortState.NONE) {
     return children;
   }
@@ -399,7 +390,7 @@ function sortChildren<T>(
     throw Error(`sortState ${sortState} but no sortBy provided`);
   }
   const sortedChildren = _.sortBy(children, (child) => {
-    const childPath = [...pathSoFar, child.name];
+    const childPath = [...pathSoFar, child.node.name];
     return sortBy(childPath);
   });
   if (sortState === SortState.DESC) {
@@ -577,10 +568,38 @@ export function deepIncludes<T>(array: T[], val: T): boolean {
  * repeat returns an array with the given element repeated `times`
  * times. Sadly, `_.repeat` only works for strings.
  */
-function repeat<T>(times: number, item: T): T[] {
+export function repeat<T>(times: number, item: T): T[] {
   const output: T[] = [];
   for (let i = 0; i < times; i++) {
     output.push(item);
   }
   return output;
+}
+
+export interface TreeWithSize<T> {
+  size: number;
+  node: TreeNode<T>;
+  children?: TreeWithSize<T>[];
+}
+
+export function augmentWithSize<T>(node: TreeNode<T>): TreeWithSize<T> {
+  if (isLeaf(node)) {
+    return {
+      size: 1,
+      node,
+    };
+  }
+
+  let size = 1; // node itself
+  const children: TreeWithSize<T>[] = [];
+  node.children.forEach((child) => {
+    const augmentedChild = augmentWithSize(child);
+    size += augmentedChild.size;
+    children.push(augmentedChild);
+  });
+  return {
+    size,
+    children,
+    node,
+  };
 }

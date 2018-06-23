@@ -11,7 +11,8 @@ import {
   flatten,
   sumValuesUnderPaths,
   LayoutCell,
-  FlattenedNode, visitNodes, PaginationState, SortState, isLeaf,
+  FlattenedNode, visitNodes, PaginationState, SortState, isLeaf, augmentWithSize, TreeWithSize,
+  repeat,
 } from "./tree";
 import { cockroach } from "src/js/protos";
 import NodeDescriptor$Properties = cockroach.roachpb.NodeDescriptor$Properties;
@@ -426,69 +427,93 @@ const selectGetValueFun = createSelector(
   },
 );
 
-const selectFlattenedRows = createSelector(
+const selectRowsWithSize = createSelector(
   (propsAndState: PropsAndState) => propsAndState.props.rows,
+  (rows: TreeNode<SchemaObject>) => {
+    return augmentWithSize(rows);
+  },
+);
+
+const selectColsWithSize = createSelector(
   (propsAndState: PropsAndState) => propsAndState.props.cols,
+  (cols: TreeNode<NodeDescriptor$Properties>) => {
+    return augmentWithSize(cols);
+  },
+);
+
+const selectFlattenedRows = createSelector(
+  selectRowsWithSize,
+  selectColsWithSize,
   (propsAndState: PropsAndState) => propsAndState.state.collapsedRows,
   (propsAndState: PropsAndState) => propsAndState.state.paginationStates,
   selectGetValueFun,
   (
-    rows: TreeNode<SchemaObject>,
-    cols: TreeNode<NodeDescriptor$Properties>,
+    rows: TreeWithSize<SchemaObject>,
+    cols: TreeWithSize<NodeDescriptor$Properties>,
     collapsedRows: TreePath[],
     paginationStates: AssocList<TreePath, PaginationState>,
     getValue: (rowPath: TreePath, colPath: TreePath) => number,
   ) => {
     console.log("flattening rows");
     const sortBy = (path: TreePath) => {
-      return sumValuesUnderPaths(rows, cols, path, [], getValue);
+      return sumValuesUnderPaths(rows.node, cols.node, path, [], getValue);
     };
     return flatten(rows, collapsedRows, true /* includeNodes */, paginationStates, PAGE_SIZE, sortBy);
   },
 );
 
 const selectFlattenedCols = createSelector(
-  (propsAndState: PropsAndState) => propsAndState.props.cols,
+  selectColsWithSize,
   (propsAndState: PropsAndState) => propsAndState.state.collapsedCols,
-  (cols: TreeNode<NodeDescriptor$Properties>, collapseCols: TreePath[]) => {
+  (cols: TreeWithSize<NodeDescriptor$Properties>, collapseCols: TreePath[]) => {
     console.log("flattening cols");
     return flatten(cols, collapseCols, false /* includeNodes */);
   },
 );
 
 const selectMasterGrid = createSelector(
-  (propsAndState: PropsAndState) => propsAndState.props.rows,
-  (propsAndState: PropsAndState) => propsAndState.props.cols,
+  selectRowsWithSize,
+  selectColsWithSize,
   selectGetValueFun,
   (
-    rows: TreeNode<SchemaObject>,
-    cols: TreeNode<NodeDescriptor$Properties>,
+    rows: TreeWithSize<SchemaObject>,
+    cols: TreeWithSize<NodeDescriptor$Properties>,
     getValue: (rowPath: TreePath, colPath: TreePath) => number,
   ) => {
     console.log("computing master grid");
-    const outputRows: number[][] = [];
+    // TODO(vilterp): build this as we go
+    const outputRows: number[][] = repeat(rows.size, repeat(cols.size, 0));
     // First pass... All leaf values
-    visitNodes(rows, (row, rowPath) => {
-      const outputRow: number[] = [];
-      visitNodes(cols, (col, colPath) => {
-        if (isLeaf(row) && isLeaf(col)) {
-          const value = getValue(rowPath, colPath);
-          outputRow.push(value);
-        } else {
-          outputRow.push(0);
-        }
-        return true;
+    function getAndSaveValue(
+      rowIdx: number,
+      rowPath: TreePath,
+      row: TreeWithSize<SchemaObject>,
+      colIdx: number,
+      colPath: TreePath,
+      col: TreeWithSize<NodeDescriptor$Properties>,
+    ): number {
+      if (isLeaf(row.node) && isLeaf(col.node)) {
+        const value = getValue(rowPath, colPath);
+        outputRows[rowIdx][colIdx] = value;
+        // put it somewhere
+        return value;
+      }
+      let sum = 0;
+      (row.children || []).forEach((rowChild, subRowIdx) => {
+        (col.children || []).forEach((colChild, subColIdx) => {
+          sum += getAndSaveValue(
+            rowIdx + subRowIdx,
+            [...rowPath, rowChild.node.name],
+            rowChild,
+            colIdx + subColIdx,
+            [...colPath, colChild.node.name],
+            colChild,
+          );
+        });
       });
-      outputRows.push(outputRow);
-      return true;
-    });
-    // Second pass: sums
-    // function recurRows(rowIdx: number, rowNode: TreeNode<SchemaObject>) {
-    //   if (isLeaf(rowNode)) {
-    //
-    //   }
-    // }
-    // recurRows(0, 0, rows, cols);
+      return sum;
+    }
+    getAndSaveValue(0, [], rows, 0, [], cols);
     return outputRows;
   },
 );
