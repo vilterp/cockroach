@@ -341,8 +341,8 @@ export function flatten<T>(
         isPaginated: (node.children || []).length > pageSize,
         masterIdx,
       });
-      increase++;
     }
+    increase++;
 
     // TODO: we can't be traversing the entire tree (including collapsed subtrees) to get indices here
     // need to cache the size of each subtree or something
@@ -568,7 +568,7 @@ export function deepIncludes<T>(array: T[], val: T): boolean {
  * repeat returns an array with the given element repeated `times`
  * times. Sadly, `_.repeat` only works for strings.
  */
-export function repeat<T>(times: number, item: T): T[] {
+function repeat<T>(times: number, item: T): T[] {
   const output: T[] = [];
   for (let i = 0; i < times; i++) {
     output.push(item);

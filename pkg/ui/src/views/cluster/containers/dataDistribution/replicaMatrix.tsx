@@ -12,7 +12,6 @@ import {
   sumValuesUnderPaths,
   LayoutCell,
   FlattenedNode, visitNodes, PaginationState, SortState, isLeaf, augmentWithSize, TreeWithSize,
-  repeat,
 } from "./tree";
 import { cockroach } from "src/js/protos";
 import NodeDescriptor$Properties = cockroach.roachpb.NodeDescriptor$Properties;
@@ -510,9 +509,6 @@ const selectMasterGrid = createSelector(
             debugger;
           }
           outputRows[rowIdx][colIdx] = value;
-          if (value !== 0) {
-            console.log(rowPath, rowIdx, colPath, colIdx, value);
-          }
           return {
             sum: value,
             increase: 1,
@@ -528,7 +524,8 @@ const selectMasterGrid = createSelector(
             innerSum += childSum;
             innerIncrease += childIncrease;
           });
-          // outputRows[rowIdx][colIdx] = sum;
+          // console.log("sum", rowPath, rowIdx, colPath, colIdx, innerSum);
+          outputRows[rowIdx][colIdx] = innerSum;
         }
         return {
           sum: innerSum,
@@ -550,8 +547,6 @@ const selectMasterGrid = createSelector(
           increase += childIncrease;
         });
       }
-
-      // outputRows[rowIdx][0] = colsSum;
 
       return {
         sum,
@@ -583,6 +578,7 @@ const selectAllVals = createSelector(
           return;
         }
         const value = masterGrid[row.masterIdx][col.masterIdx];
+        // console.log("get val from master grid:", row.path, row.masterIdx, col.path, col.masterIdx, "=>", value);
         rowVals.push(value);
         inSingleArray.push(value);
       });
