@@ -235,6 +235,7 @@ export interface FlattenedNode<T> {
   node: TreeNode<T>;
   path: TreePath;
   isPaginated: boolean;
+  masterIdx: number;
 }
 
 // TODO(vilterp): this is defined somewhere else... Sortable table?
@@ -308,9 +309,9 @@ export function flatten<T>(
   sortBy?: (path: TreePath) => number,
 ): FlattenedNode<T>[] {
   const output: FlattenedNode<T>[] = [];
-  recur(tree, []);
+  recur(tree, [], 0);
 
-  function recur(node: TreeNode<T>, pathSoFar: TreePath) {
+  function recur(node: TreeNode<T>, pathSoFar: TreePath, masterIdx: number): number {
     const depth = pathSoFar.length;
 
     if (isLeaf(node)) {
@@ -321,9 +322,12 @@ export function flatten<T>(
         node,
         path: pathSoFar,
         isPaginated: false,
+        masterIdx,
       });
-      return true;
+      return 1;
     }
+
+    let increase = 0;
 
     const isExpanded = !deepIncludes(collapsedPaths, pathSoFar);
     const nodeBecomesLeaf = !includeInternalNodes && !isExpanded;
@@ -335,27 +339,51 @@ export function flatten<T>(
         node,
         path: pathSoFar,
         isPaginated: (node.children || []).length > pageSize,
+        masterIdx,
       });
+      increase++;
     }
 
-    if (isExpanded && node.children) {
-      const paginationState = getAssocList(paginationStates, pathSoFar);
-      const page = paginationState
-        ? paginationState.page
-        : 0;
-      const offset = page * pageSize;
+    // TODO: we can't be traversing the entire tree (including collapsed subtrees) to get indices here
+    // need to cache the size of each subtree or something
+    if (node.children) {
+      if (isExpanded) {
+        const paginationState = getAssocList(paginationStates, pathSoFar);
+        const page = paginationState
+          ? paginationState.page
+          : 0;
+        const offset = page * pageSize;
 
-      const sortState = paginationState ? paginationState.sortState : SortState.NONE;
-      const sortedChildren = sortChildren(node.children, pathSoFar, sortState, sortBy);
+        const sortState = paginationState ? paginationState.sortState : SortState.NONE;
+        const sortedChildren = sortChildren(node.children, pathSoFar, sortState, sortBy);
 
-      for (let i = offset; i < Math.min(sortedChildren.length, offset + pageSize); i++) {
-        const child = sortedChildren[i];
-        recur(child, [...pathSoFar, child.name]);
+        for (let i = 0; i < offset; i++) {
+          const child = sortedChildren[i];
+          increase += countNodes(child);
+        }
+
+        for (let i = offset; i < Math.min(sortedChildren.length, offset + pageSize); i++) {
+          const child = sortedChildren[i];
+          increase += recur(child, [...pathSoFar, child.name], masterIdx + increase);
+        }
+      } else {
+        increase += countNodes(node) - 1;
       }
     }
+
+    return increase;
   }
 
   return output;
+}
+
+function countNodes<T>(node: TreeNode<T>) {
+  let i = 0;
+  visitNodes(node, () => {
+    i++;
+    return true;
+  });
+  return i;
 }
 
 function sortChildren<T>(

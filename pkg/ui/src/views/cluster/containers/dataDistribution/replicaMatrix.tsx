@@ -407,7 +407,7 @@ function CustomLink(props: { to: string, children: React.ReactNode }) {
   );
 }
 
-// Selectors
+// SELECTORS
 
 interface PropsAndState {
   props: ReplicaMatrixProps;
@@ -456,51 +456,6 @@ const selectFlattenedCols = createSelector(
   },
 );
 
-const selectAllVals = createSelector(
-  (propsAndState: PropsAndState) => propsAndState.props.rows,
-  (propsAndState: PropsAndState) => propsAndState.props.cols,
-  selectGetValueFun,
-  selectFlattenedRows,
-  selectFlattenedCols,
-  (
-    rows: TreeNode<SchemaObject>,
-    cols: TreeNode<NodeDescriptor$Properties>,
-    getValue: (rowPath: TreePath, colPath: TreePath) => number,
-    flattenedRows: FlattenedNode<SchemaObject>[],
-    flattenedCols: FlattenedNode<NodeDescriptor$Properties>[],
-  ) => {
-    const allVals: number[][] = [];
-    const inSingleArray: number[] = [];
-    flattenedRows.forEach((row) => {
-      const rowVals: number[] = [];
-      allVals.push(rowVals);
-      flattenedCols.forEach((col) => {
-        if (!(row.isLeaf || row.isCollapsed)) {
-          return;
-        }
-        const value = sumValuesUnderPaths(rows, cols, row.path, col.path, getValue);
-        rowVals.push(value);
-        inSingleArray.push(value);
-      });
-    });
-    return {
-      allVals,
-      inSingleArray,
-    };
-  },
-);
-
-const selectScale = createSelector(
-  selectAllVals,
-  ({ inSingleArray }) => {
-    console.log("computing scale");
-    const extent = d3.extent(inSingleArray);
-    return d3.scale.linear()
-      .domain([0, extent[1]])
-      .range([100, 50]); // TODO(vilterp): factor these out into constants
-  },
-);
-
 const selectMasterGrid = createSelector(
   (propsAndState: PropsAndState) => propsAndState.props.rows,
   (propsAndState: PropsAndState) => propsAndState.props.cols,
@@ -535,6 +490,53 @@ const selectMasterGrid = createSelector(
     // }
     // recurRows(0, 0, rows, cols);
     return outputRows;
+  },
+);
+
+const selectAllVals = createSelector(
+  selectMasterGrid,
+  selectFlattenedRows,
+  selectFlattenedCols,
+  (
+    masterGrid: number[][],
+    flattenedRows: FlattenedNode<SchemaObject>[],
+    flattenedCols: FlattenedNode<NodeDescriptor$Properties>[],
+  ) => {
+    const allVals: number[][] = [];
+    const inSingleArray: number[] = [];
+    flattenedRows.forEach((row) => {
+      const rowVals: number[] = [];
+      allVals.push(rowVals);
+      flattenedCols.forEach((col) => {
+        if (!(row.isLeaf || row.isCollapsed)) {
+          return;
+        }
+        console.log("value:", row.path, row.masterIdx, col.path, col.masterIdx);
+        let value = 0;
+        try {
+          value = masterGrid[row.masterIdx][col.masterIdx];
+        } catch (e) {
+          debugger;
+        }
+        rowVals.push(value);
+        inSingleArray.push(value);
+      });
+    });
+    return {
+      allVals,
+      inSingleArray,
+    };
+  },
+);
+
+const selectScale = createSelector(
+  selectAllVals,
+  ({ inSingleArray }) => {
+    console.log("computing scale");
+    const extent = d3.extent(inSingleArray);
+    return d3.scale.linear()
+      .domain([0, extent[1]])
+      .range([100, 50]); // TODO(vilterp): factor these out into constants
   },
 );
 
