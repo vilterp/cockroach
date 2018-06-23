@@ -582,6 +582,8 @@ export interface TreeWithSize<T> {
   children?: TreeWithSize<T>[];
 }
 
+// TODO(vilterp): not store the child arrays twice...
+// maybe actually just add teh size to teh same struct
 export function augmentWithSize<T>(node: TreeNode<T>): TreeWithSize<T> {
   if (isLeaf(node)) {
     return {

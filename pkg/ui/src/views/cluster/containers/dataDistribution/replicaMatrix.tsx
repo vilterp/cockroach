@@ -471,6 +471,11 @@ const selectFlattenedCols = createSelector(
   },
 );
 
+interface SumAndIncreate {
+  sum: number;
+  increase: number;
+}
+
 const selectMasterGrid = createSelector(
   selectRowsWithSize,
   selectColsWithSize,
@@ -482,38 +487,79 @@ const selectMasterGrid = createSelector(
   ) => {
     console.log("computing master grid");
     // TODO(vilterp): build this as we go
-    const outputRows: number[][] = repeat(rows.size, repeat(cols.size, 0));
-    // First pass... All leaf values
-    function getAndSaveValue(
-      rowIdx: number,
-      rowPath: TreePath,
-      row: TreeWithSize<SchemaObject>,
-      colIdx: number,
-      colPath: TreePath,
-      col: TreeWithSize<NodeDescriptor$Properties>,
-    ): number {
-      if (isLeaf(row.node) && isLeaf(col.node)) {
-        const value = getValue(rowPath, colPath);
-        outputRows[rowIdx][colIdx] = value;
-        // put it somewhere
-        return value;
+    const outputRows: number[][] = [];
+    for (let i = 0; i < rows.size; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < cols.size; j++) {
+        row.push(0);
       }
-      let sum = 0;
-      (row.children || []).forEach((rowChild, subRowIdx) => {
-        (col.children || []).forEach((colChild, subColIdx) => {
-          sum += getAndSaveValue(
-            rowIdx + subRowIdx,
-            [...rowPath, rowChild.node.name],
-            rowChild,
-            colIdx + subColIdx,
-            [...colPath, colChild.node.name],
-            colChild,
-          );
-        });
-      });
-      return sum;
+      outputRows.push(row);
     }
-    getAndSaveValue(0, [], rows, 0, [], cols);
+
+    function visitRows(rowPath: TreePath, rowIdx: number, row: TreeWithSize<SchemaObject>): SumAndIncreate {
+      // console.log("visitRows", rowPath, rowIdx);
+
+      function visitCols(colPath: TreePath, colIdx: number, col: TreeWithSize<NodeDescriptor$Properties>): SumAndIncreate {
+        // console.log("visitCols", colPath, rowIdx);
+
+        if (isLeaf(col.node) && isLeaf(row.node)) {
+          let value = 0;
+          try {
+            value = getValue(rowPath, colPath);
+          } catch (e) {
+            debugger;
+          }
+          outputRows[rowIdx][colIdx] = value;
+          if (value !== 0) {
+            console.log(rowPath, rowIdx, colPath, colIdx, value);
+          }
+          return {
+            sum: value,
+            increase: 1,
+          };
+        }
+        let innerSum = 0;
+        let innerIncrease = 1;
+        if (col.children) {
+          col.children.forEach((colChild) => {
+            const { sum: childSum, increase: childIncrease } = visitCols(
+              [...colPath, colChild.node.name], colIdx + innerIncrease, colChild,
+            );
+            innerSum += childSum;
+            innerIncrease += childIncrease;
+          });
+          // outputRows[rowIdx][colIdx] = sum;
+        }
+        return {
+          sum: innerSum,
+          increase: innerIncrease,
+        };
+      }
+
+      let increase = 1;
+      let sum = 0;
+      const { sum: colsSum } = visitCols([], 0, cols);
+      sum += colsSum;
+
+      if (row.children) {
+        row.children.forEach((rowChild) => {
+          const { sum: childSum, increase: childIncrease } = visitRows(
+            [...rowPath, rowChild.node.name], rowIdx + increase, rowChild,
+          );
+          sum += childSum;
+          increase += childIncrease;
+        });
+      }
+
+      // outputRows[rowIdx][0] = colsSum;
+
+      return {
+        sum,
+        increase,
+      };
+    }
+
+    visitRows([], 0, rows);
     return outputRows;
   },
 );
@@ -536,13 +582,7 @@ const selectAllVals = createSelector(
         if (!(row.isLeaf || row.isCollapsed)) {
           return;
         }
-        console.log("value:", row.path, row.masterIdx, col.path, col.masterIdx);
-        let value = 0;
-        try {
-          value = masterGrid[row.masterIdx][col.masterIdx];
-        } catch (e) {
-          debugger;
-        }
+        const value = masterGrid[row.masterIdx][col.masterIdx];
         rowVals.push(value);
         inSingleArray.push(value);
       });
