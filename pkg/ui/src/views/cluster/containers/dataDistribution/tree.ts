@@ -568,7 +568,7 @@ export function deepIncludes<T>(array: T[], val: T): boolean {
  * repeat returns an array with the given element repeated `times`
  * times. Sadly, `_.repeat` only works for strings.
  */
-function repeat<T>(times: number, item: T): T[] {
+export function repeat<T>(times: number, item: T): T[] {
   const output: T[] = [];
   for (let i = 0; i < times; i++) {
     output.push(item);

@@ -12,6 +12,7 @@ import {
   sumValuesUnderPaths,
   LayoutCell,
   FlattenedNode, visitNodes, PaginationState, SortState, isLeaf, augmentWithSize, TreeWithSize,
+  repeat,
 } from "./tree";
 import { cockroach } from "src/js/protos";
 import NodeDescriptor$Properties = cockroach.roachpb.NodeDescriptor$Properties;
@@ -455,6 +456,7 @@ const selectFlattenedRows = createSelector(
   ) => {
     console.log("flattening rows");
     const sortBy = (path: TreePath) => {
+      // TODO(vilterp): get this from the master grid
       return sumValuesUnderPaths(rows.node, cols.node, path, [], getValue);
     };
     return flatten(rows, collapsedRows, true /* includeNodes */, paginationStates, PAGE_SIZE, sortBy);
@@ -479,11 +481,11 @@ const selectMasterGrid = createSelector(
   selectRowsWithSize,
   selectColsWithSize,
   selectGetValueFun,
-  (
+  function makeMasterGrid(
     rows: TreeWithSize<SchemaObject>,
     cols: TreeWithSize<NodeDescriptor$Properties>,
     getValue: (rowPath: TreePath, colPath: TreePath) => number,
-  ) => {
+  ) {
     console.log("computing master grid");
     // TODO(vilterp): build this as we go
     const outputRows: number[][] = [];
@@ -501,13 +503,8 @@ const selectMasterGrid = createSelector(
       function visitCols(colPath: TreePath, colIdx: number, col: TreeWithSize<NodeDescriptor$Properties>): SumAndIncreate {
         // console.log("visitCols", colPath, rowIdx);
 
-        if (isLeaf(col.node) && isLeaf(row.node)) {
-          let value = 0;
-          try {
-            value = getValue(rowPath, colPath);
-          } catch (e) {
-            debugger;
-          }
+        if (isLeaf(col.node)) {
+          const value = getValue(rowPath, colPath);
           outputRows[rowIdx][colIdx] = value;
           return {
             sum: value,
@@ -535,17 +532,24 @@ const selectMasterGrid = createSelector(
 
       let increase = 1;
       let sum = 0;
-      const { sum: colsSum } = visitCols([], 0, cols);
-      sum += colsSum;
-
-      if (row.children) {
+      if (isLeaf(row.node)) {
+        const { sum: colsSum } = visitCols([], 0, cols);
+        sum += colsSum;
+      } else {
         row.children.forEach((rowChild) => {
           const { sum: childSum, increase: childIncrease } = visitRows(
             [...rowPath, rowChild.node.name], rowIdx + increase, rowChild,
           );
+          for (let c = 0; c < cols.size; c++) {
+            outputRows[rowIdx][c] += outputRows[rowIdx + increase][c];
+          }
           sum += childSum;
           increase += childIncrease;
         });
+
+        // TODO: sum down across children
+        // visit all child rows again (???)
+        //   for each column, sum up child row values
       }
 
       return {
