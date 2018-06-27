@@ -27,6 +27,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/shirou/gopsutil/disk"
 )
 
 var (
@@ -47,6 +48,16 @@ var (
 	metaFDOpen         = metric.Metadata{Name: "sys.fd.open", Help: "Process open file descriptors"}
 	metaFDSoftLimit    = metric.Metadata{Name: "sys.fd.softlimit", Help: "Process open FD soft limit"}
 	metaUptime         = metric.Metadata{Name: "sys.uptime", Help: "Process uptime in seconds"}
+
+	metaDiskReadCount = metric.Metadata{Name: "sys.disk.read.count"}
+	metaDiskReadTime  = metric.Metadata{Name: "sys.disk.read.time"}
+	metaDiskReadBytes = metric.Metadata{Name: "sys.disk.read.bytes"}
+
+	metaDiskWriteCount = metric.Metadata{Name: "sys.disk.write.count"}
+	metaDiskWriteTime  = metric.Metadata{Name: "sys.disk.write.time"}
+	metaDiskWriteBytes = metric.Metadata{Name: "sys.disk.write.bytes"}
+
+	metaIopsInProgress = metric.Metadata{Name: "sys.disk.iopsinprogress"}
 )
 
 // getCgoMemStats is a function that fetches stats for the C++ portion of the code.
@@ -96,6 +107,17 @@ type RuntimeStatSampler struct {
 	FDSoftLimit    *metric.Gauge
 	Uptime         *metric.Gauge // We use a gauge to be able to call Update.
 	BuildTimestamp *metric.Gauge
+
+	// Disk stats
+	DiskReadBytes *metric.Gauge
+	DiskReadTime  *metric.Gauge
+	DiskReadCount *metric.Gauge
+
+	DiskWriteBytes *metric.Gauge
+	DiskWriteTime  *metric.Gauge
+	DiskWriteCount *metric.Gauge
+
+	IopsInProgress *metric.Gauge
 }
 
 // MakeRuntimeStatSampler constructs a new RuntimeStatSampler object.
@@ -138,6 +160,16 @@ func MakeRuntimeStatSampler(clock *hlc.Clock) RuntimeStatSampler {
 		FDSoftLimit:    metric.NewGauge(metaFDSoftLimit),
 		Uptime:         metric.NewGauge(metaUptime),
 		BuildTimestamp: buildTimestamp,
+
+		DiskReadTime:  metric.NewGauge(metaDiskReadTime),
+		DiskReadCount: metric.NewGauge(metaDiskReadCount),
+		DiskReadBytes: metric.NewGauge(metaDiskReadBytes),
+
+		DiskWriteTime:  metric.NewGauge(metaDiskWriteTime),
+		DiskWriteCount: metric.NewGauge(metaDiskWriteCount),
+		DiskWriteBytes: metric.NewGauge(metaDiskWriteBytes),
+
+		IopsInProgress: metric.NewGauge(metaIopsInProgress),
 	}
 }
 
@@ -169,8 +201,8 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(ctx context.Context) {
 	if err := mem.Get(pid); err != nil {
 		log.Errorf(ctx, "unable to get mem usage: %v", err)
 	}
-	cpu := gosigar.ProcTime{}
-	if err := cpu.Get(pid); err != nil {
+	cpuTime := gosigar.ProcTime{}
+	if err := cpuTime.Get(pid); err != nil {
 		log.Errorf(ctx, "unable to get cpu usage: %v", err)
 	}
 
@@ -191,9 +223,9 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(ctx context.Context) {
 	// if calculated later using downsampled time series data.
 	now := rsr.clock.PhysicalNow()
 	dur := float64(now - rsr.lastNow)
-	// cpu.{User,Sys} are in milliseconds, convert to nanoseconds.
-	newUtime := int64(cpu.User) * 1e6
-	newStime := int64(cpu.Sys) * 1e6
+	// cpuTime.{User,Sys} are in milliseconds, convert to nanoseconds.
+	newUtime := int64(cpuTime.User) * 1e6
+	newStime := int64(cpuTime.Sys) * 1e6
 	uPerc := float64(newUtime-rsr.lastUtime) / dur
 	sPerc := float64(newStime-rsr.lastStime) / dur
 	pausePerc := float64(ms.PauseTotalNs-rsr.lastPauseTime) / dur
@@ -207,12 +239,29 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(ctx context.Context) {
 		var err error
 		cgoAllocated, cgoTotal, err = getCgoMemStats(ctx)
 		if err != nil {
-			log.Warningf(ctx, "problem fetching CGO memory stats: %s, CGO stats will be empty.", err)
+			log.Warningf(ctx, "problem fetching CGO memory stats: %s; CGO stats will be empty.", err)
 		}
 	}
 
 	goAllocated := ms.Alloc
 	goTotal := ms.Sys - ms.HeapReleased
+
+	// Get disk stats.
+	disksStats, err := disk.IOCountersWithContext(ctx)
+	if err != nil {
+		log.Warningf(ctx, "problem fetching disk stats: %s; disk stats will be empty.", err)
+	}
+	summedDiskStats := sumDiskStats(disksStats)
+
+	rsr.DiskReadBytes.Update(int64(summedDiskStats.ReadBytes))
+	rsr.DiskReadCount.Update(int64(summedDiskStats.ReadCount))
+	rsr.DiskReadTime.Update(int64(summedDiskStats.ReadTime))
+
+	rsr.DiskWriteBytes.Update(int64(summedDiskStats.WriteBytes))
+	rsr.DiskWriteCount.Update(int64(summedDiskStats.WriteCount))
+	rsr.DiskWriteTime.Update(int64(summedDiskStats.WriteTime))
+
+	rsr.IopsInProgress.Update(int64(summedDiskStats.IopsInProgress))
 
 	// Log summary of statistics to console.
 	cgoRate := float64((numCgoCall-rsr.lastCgoCall)*int64(time.Second)) / dur
@@ -244,4 +293,20 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(ctx context.Context) {
 	rsr.FDSoftLimit.Update(int64(fds.SoftLimit))
 	rsr.Rss.Update(int64(mem.Resident))
 	rsr.Uptime.Update((now - rsr.startTimeNanos) / 1e9)
+}
+
+func sumDiskStats(disksStats map[string]disk.IOCountersStat) disk.IOCountersStat {
+	output := disk.IOCountersStat{}
+	for _, stats := range disksStats {
+		output.WriteCount += stats.WriteCount
+		output.WriteTime += stats.WriteTime
+		output.WriteBytes += stats.WriteBytes
+
+		output.ReadCount += stats.ReadCount
+		output.ReadTime += stats.ReadTime
+		output.ReadBytes += stats.ReadBytes
+
+		output.IopsInProgress += stats.IopsInProgress
+	}
+	return output
 }
