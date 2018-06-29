@@ -1381,10 +1381,16 @@ func TestAdminAPIDataDistribution(t *testing.T) {
 		return nil
 	})
 
-	// Try dropping a database. (#26991)
-	sqlDB.Exec(t, "DROP DATABASE roachblog")
-
 	var resp serverpb.DataDistributionResponse
+
+	// Hit endpoint after dropping a table.
+	sqlDB.Exec(t, "DROP TABLE roachblog.comments")
+	if err := getAdminJSONProto(firstServer, "data_distribution", &resp); err != nil {
+		t.Fatal(err)
+	}
+
+	// Hit endpoint after dropping a database. (#26991)
+	sqlDB.Exec(t, "DROP DATABASE roachblog")
 	if err := getAdminJSONProto(firstServer, "data_distribution", &resp); err != nil {
 		t.Fatal(err)
 	}

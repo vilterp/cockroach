@@ -1387,7 +1387,11 @@ func (s *adminServer) DataDistribution(
 	// and deleted tables (as opposed to e.g. information_schema) because we are interested
 	// in the data for all ranges, not just ranges for visible tables.
 	args := sql.SessionArgs{User: s.getUser(req)}
-	tablesQuery := `SELECT name, table_id, database_name, parent_id FROM "".crdb_internal.tables`
+	tablesQuery := `
+		SELECT name, table_id, database_name, parent_id
+		FROM "".crdb_internal.tables
+		WHERE state = 'PUBLIC'
+	`
 	rows1, _ /* cols */, err := s.server.internalExecutor.QueryWithSessionArgs(
 		ctx, "admin-replica-matrix", nil /* txn */, args, tablesQuery,
 	)
@@ -1402,10 +1406,6 @@ func (s *adminServer) DataDistribution(
 		tableName := (*string)(row[0].(*tree.DString))
 		tableID := uint64(tree.MustBeDInt(row[1]))
 		dbName := (*string)(row[2].(*tree.DString))
-
-		if (*dbName)[0] == '[' {
-			continue
-		}
 
 		// Insert database if it doesn't exist.
 		dbInfo, ok := resp.DatabaseInfo[*dbName]
