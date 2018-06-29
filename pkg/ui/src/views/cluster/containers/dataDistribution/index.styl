@@ -1,3 +1,5 @@
+@require '~src/views/shared/util/table.styl'
+
 .data-distribution
   display: flex
 
@@ -9,3 +11,10 @@
 
   &__raw-yaml
     padding-top 5px
+
+.range-log
+  @extend $table-base
+
+  &__info
+    font-family monospace
+    white-space pre
