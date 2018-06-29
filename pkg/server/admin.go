@@ -1403,6 +1403,10 @@ func (s *adminServer) DataDistribution(
 		tableID := uint64(tree.MustBeDInt(row[1]))
 		dbName := (*string)(row[2].(*tree.DString))
 
+		if (*dbName)[0] == '[' {
+			continue
+		}
+
 		// Insert database if it doesn't exist.
 		dbInfo, ok := resp.DatabaseInfo[*dbName]
 		if !ok {

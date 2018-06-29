@@ -1380,6 +1380,14 @@ func TestAdminAPIDataDistribution(t *testing.T) {
 
 		return nil
 	})
+
+	// Try dropping a database. (#26991)
+	sqlDB.Exec(t, "DROP DATABASE roachblog")
+
+	var resp serverpb.DataDistributionResponse
+	if err := getAdminJSONProto(firstServer, "data_distribution", &resp); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func BenchmarkAdminAPIDataDistribution(b *testing.B) {
