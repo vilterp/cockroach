@@ -8,7 +8,7 @@
 
 import React from "react";
 
-import { CpuSparkline } from "src/views/clusterviz/containers/map/cpuSparkline";
+import { CpuSparkline } from "src/views/shared/components/sparkline/cpuSparkline";
 import { QpsSparkline } from "src/views/clusterviz/containers/map/qpsSparkline";
 import { DARK_BLUE } from "src/views/shared/components/sparkline/colors";
 

@@ -16,6 +16,11 @@ import { SortedTable } from "src/views/shared/components/sortedtable";
 import { LongToMoment } from "src/util/convert";
 import { Bytes } from "src/util/format";
 import { INodeStatus, MetricConstants, BytesUsed } from "src/util/proto";
+import { CpuSparkline } from "oss/src/views/shared/components/sparkline/cpuSparkline";
+import { BACKGROUND_BLUE, MAIN_BLUE } from "oss/src/views/shared/components/sparkline/colors";
+import { Metric} from "src/views/shared/components/metricQuery";
+import { SparklineMetricsDataComponent } from "src/views/shared/components/sparkline/sparkline";
+import { MetricsDataProvider } from "src/views/shared/containers/metricDataProvider/index";
 
 const liveNodesSortSetting = new LocalSetting<AdminUIState, SortSetting>(
   "nodes/live_sort_setting", (s) => s.localSettings,
@@ -103,6 +108,65 @@ class LiveNodeList extends React.Component<NodeCategoryListProps, {}> {
               // construct the full BEM class in the table component itself.
               className: "sort-table__cell--link",
             },
+            {
+              title: "CPU",
+              cell: (ns) => (
+                <svg width={125} height={15}>
+                  <CpuSparkline nodes={[ns.desc.node_id.toString()]} />
+                </svg>
+              ),
+            },
+            // Mem Usage - total memory being used on this node.
+            {
+              title: "Mem Usage",
+              cell: (ns) => (
+                <svg width={150} height={15}>
+                  <MetricsDataProvider id={`cr.node.sys.rss-${ns.desc.node_id.toString()}`}>
+                    <SparklineMetricsDataComponent
+                      formatCurrentValue={Bytes}
+                      backgroundColor={BACKGROUND_BLUE}
+                      foregroundColor={MAIN_BLUE}
+                    >
+                      <Metric name="cr.node.sys.rss" sources={[ns.desc.node_id.toString()]} />
+                    </SparklineMetricsDataComponent>
+                  </MetricsDataProvider>
+                </svg>
+              ),
+            },
+            {
+              title: "Disk IO",
+              cell: (ns) => (
+                <svg width={150} height={15}>
+                  <MetricsDataProvider id={`cr.node.sys.disk.bytes.host-${ns.desc.node_id.toString()}`}>
+                    <SparklineMetricsDataComponent
+                      formatCurrentValue={Bytes}
+                      backgroundColor={BACKGROUND_BLUE}
+                      foregroundColor={MAIN_BLUE}
+                    >
+                      <Metric name="cr.node.sys.disk.read.bytes.host" sources={[ns.desc.node_id.toString()]} nonNegativeRate />
+                      <Metric name="cr.node.sys.disk.write.bytes.host" sources={[ns.desc.node_id.toString()]} nonNegativeRate />
+                    </SparklineMetricsDataComponent>
+                  </MetricsDataProvider>
+                </svg>
+              ),
+            },
+            {
+              title: "Net IO",
+              cell: (ns) => (
+                <svg width={150} height={15}>
+                  <MetricsDataProvider id={`cr.node.sys.net.bytes.host-${ns.desc.node_id.toString()}`}>
+                    <SparklineMetricsDataComponent
+                      formatCurrentValue={Bytes}
+                      backgroundColor={BACKGROUND_BLUE}
+                      foregroundColor={MAIN_BLUE}
+                    >
+                      <Metric name="cr.node.sys.net.send.bytes.host" sources={[ns.desc.node_id.toString()]} nonNegativeRate />
+                      <Metric name="cr.node.sys.net.recv.bytes.host" sources={[ns.desc.node_id.toString()]} nonNegativeRate />
+                    </SparklineMetricsDataComponent>
+                  </MetricsDataProvider>
+                </svg>
+              ),
+            },
             // Started at - displays the time that the node started.
             {
               title: "Uptime",
@@ -123,12 +187,6 @@ class LiveNodeList extends React.Component<NodeCategoryListProps, {}> {
               title: "Replicas",
               cell: (ns) => ns.metrics[MetricConstants.replicas].toString(),
               sort: (ns) => ns.metrics[MetricConstants.replicas],
-            },
-            // Mem Usage - total memory being used on this node.
-            {
-              title: "Mem Usage",
-              cell: (ns) => Bytes(ns.metrics[MetricConstants.rss]),
-              sort: (ns) => ns.metrics[MetricConstants.rss],
             },
             // Version - the currently running version of cockroach.
             {

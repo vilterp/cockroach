@@ -2,8 +2,8 @@ import d3 from "d3";
 import React from "react";
 
 import { SparklineMetricsDataComponent } from "src/views/shared/components/sparkline/sparkline";
-import { Metric } from "src/views/shared/components/metricQuery";
-import { MetricsDataProvider } from "src/views/shared/containers/metricDataProvider";
+import { Metric } from "src/views/shared/components/metricQuery/index";
+import { MetricsDataProvider } from "src/views/shared/containers/metricDataProvider/index";
 import { BACKGROUND_BLUE, MAIN_BLUE } from "src/views/shared/components/sparkline/colors";
 
 interface CpuSparklineProps {
