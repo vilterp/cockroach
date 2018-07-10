@@ -7,7 +7,7 @@
 //     https://github.com/cockroachdb/cockroach/blob/master/licenses/CCL.txt
 
 import React from "react";
-import { DARK_BLUE, MAIN_BLUE } from "src/views/shared/colors";
+import { DARK_BLUE, MAIN_BLUE } from "src/views/shared/components/sparkline/colors";
 
 interface LabelsProps {
   label: string;

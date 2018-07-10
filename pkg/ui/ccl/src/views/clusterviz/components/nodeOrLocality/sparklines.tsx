@@ -10,7 +10,7 @@ import React from "react";
 
 import { CpuSparkline } from "src/views/clusterviz/containers/map/cpuSparkline";
 import { QpsSparkline } from "src/views/clusterviz/containers/map/qpsSparkline";
-import { DARK_BLUE } from "src/views/shared/colors";
+import { DARK_BLUE } from "src/views/shared/components/sparkline/colors";
 
 const SPARKLINE_OFFSET_PX = 36;
 

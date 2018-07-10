@@ -6,7 +6,7 @@ import { generateLocalityRoute } from "src/util/localities";
 import { LocalityTier } from "src/redux/localities";
 import { intersperse } from "src/util/intersperse";
 import { getLocalityLabel } from "src/util/localities";
-import { MAIN_BLUE } from "src/views/shared/colors";
+import { MAIN_BLUE } from "src/views/shared/components/sparkline/colors";
 import mapPinIcon from "!!raw-loader!assets/mapPin.svg";
 import { trustIcon } from "src/util/trust";
 import { CLUSTERVIZ_ROOT } from "src/routes/visualization";

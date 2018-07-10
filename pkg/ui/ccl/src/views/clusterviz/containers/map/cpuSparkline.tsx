@@ -1,9 +1,10 @@
 import d3 from "d3";
 import React from "react";
 
-import { SparklineMetricsDataComponent } from "src/views/clusterviz/containers/map/sparkline";
+import { SparklineMetricsDataComponent } from "src/views/shared/components/sparkline/sparkline";
 import { Metric } from "src/views/shared/components/metricQuery";
 import { MetricsDataProvider } from "src/views/shared/containers/metricDataProvider";
+import { BACKGROUND_BLUE, MAIN_BLUE } from "src/views/shared/components/sparkline/colors";
 
 interface CpuSparklineProps {
   nodes: string[];
@@ -14,7 +15,11 @@ export function CpuSparkline(props: CpuSparklineProps) {
 
   return (
     <MetricsDataProvider id={key}>
-      <SparklineMetricsDataComponent formatCurrentValue={d3.format(".1%")}>
+      <SparklineMetricsDataComponent
+        formatCurrentValue={d3.format(".1%")}
+        backgroundColor={BACKGROUND_BLUE}
+        foregroundColor={MAIN_BLUE}
+      >
         <Metric name="cr.node.sys.cpu.sys.percent" sources={props.nodes} />
         <Metric name="cr.node.sys.cpu.user.percent" sources={props.nodes} />
       </SparklineMetricsDataComponent>

@@ -2,9 +2,8 @@ import d3 from "d3";
 import React from "react";
 
 import { NanoToMilli } from "src/util/convert";
-import { MetricsDataComponentProps } from "src/views/shared/components/metricQuery";
+import { MetricsDataComponentProps } from "src/views/shared/components/metricQuery/index";
 import createChartComponent from "src/views/shared/util/d3-react";
-import { BACKGROUND_BLUE, MAIN_BLUE } from "src/views/shared/colors";
 
 interface SparklineConfig {
   width: number;
@@ -94,6 +93,8 @@ function sparklineChart(config: SparklineConfig) {
 
 interface SparklineMetricsDataComponentProps {
   formatCurrentValue: (value: number) => string;
+  backgroundColor: string;
+  foregroundColor: string;
 }
 
 export class SparklineMetricsDataComponent extends React.Component<MetricsDataComponentProps & SparklineMetricsDataComponentProps> {
@@ -107,8 +108,8 @@ export class SparklineMetricsDataComponent extends React.Component<MetricsDataCo
       sparklineChart({
         width: 69,
         height: 10,
-        backgroundColor: BACKGROUND_BLUE,
-        foregroundColor: MAIN_BLUE,
+        backgroundColor: this.props.backgroundColor,
+        foregroundColor: this.props.foregroundColor,
         formatCurrentValue: this.props.formatCurrentValue,
       }),
     );

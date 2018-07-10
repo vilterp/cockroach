@@ -13,7 +13,7 @@ import {
   DARK_BLUE,
   LIGHT_TEXT_BLUE,
   MAIN_BLUE,
-} from "src/views/shared/colors";
+} from "src/views/shared/components/sparkline/colors";
 import { Bytes } from "src/util/format";
 
 const ARC_INNER_RADIUS = 56;
