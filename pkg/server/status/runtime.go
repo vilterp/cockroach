@@ -137,49 +137,71 @@ var (
 
 	// TODO(vilterp): help and measurement
 	metaHostDiskReadCount = metric.Metadata{
-		Name: "sys.disk.read.count.host",
-		Unit: metric.Unit_COUNT,
+		Name:        "sys.disk.read.count.host",
+		Unit:        metric.Unit_COUNT,
+		Measurement: "Disk read operations",
+		Help:        "Disk read operations across all disks over the lifetime of this host",
 	}
 	metaHostDiskReadTime = metric.Metadata{
-		Name: "sys.disk.read.time.host",
-		Unit: metric.Unit_TIMESTAMP_NS,
+		Name:        "sys.disk.read.time.host",
+		Unit:        metric.Unit_TIMESTAMP_NS,
+		Measurement: "Time spent reading from disk",
+		Help:        "Time spent reading from all disks over the lifetime of this host",
 	}
 	metaHostDiskReadBytes = metric.Metadata{
-		Name: "sys.disk.read.bytes.host",
-		Unit: metric.Unit_BYTES,
+		Name:        "sys.disk.read.bytes.host",
+		Unit:        metric.Unit_BYTES,
+		Measurement: "Bytes read from disk",
+		Help:        "Bytes read to all disks over the lifetime of this host",
 	}
 
 	metaHostDiskWriteCount = metric.Metadata{
-		Name: "sys.disk.write.count.host",
-		Unit: metric.Unit_COUNT,
+		Name:        "sys.disk.write.count.host",
+		Unit:        metric.Unit_COUNT,
+		Measurement: "Disk write operations",
+		Help:        "Disk write operations across all disks over the lifetime of this host",
 	}
 	metaHostDiskWriteTime = metric.Metadata{
-		Name: "sys.disk.write.time.host",
-		Unit: metric.Unit_TIMESTAMP_NS,
+		Name:        "sys.disk.write.time.host",
+		Unit:        metric.Unit_TIMESTAMP_NS,
+		Measurement: "Time spent writing to disk",
+		Help:        "Time spent writing to all disks over the lifetime of this host",
 	}
 	metaHostDiskWriteBytes = metric.Metadata{
-		Name: "sys.disk.write.bytes.host",
-		Unit: metric.Unit_BYTES,
+		Name:        "sys.disk.write.bytes.host",
+		Unit:        metric.Unit_BYTES,
+		Measurement: "Bytes written to disk",
+		Help:        "Bytes written to all disks over the lifetime of this host",
 	}
 	metaHostIopsInProgress = metric.Metadata{
-		Name: "sys.disk.iopsinprogress.host",
-		Unit: metric.Unit_COUNT,
+		Name:        "sys.disk.iopsinprogress.host",
+		Unit:        metric.Unit_COUNT,
+		Measurement: "IO operations",
+		Help:        "IO operations currently in progress on this host",
 	}
 	metaHostNetRecvBytes = metric.Metadata{
-		Name: "sys.net.recv.bytes.host",
-		Unit: metric.Unit_BYTES,
+		Name:        "sys.net.recv.bytes.host",
+		Unit:        metric.Unit_BYTES,
+		Measurement: "Bytes received",
+		Help:        "Bytes received on all network interfaces over the lifetime of this host",
 	}
 	metaHostNetRecvPackets = metric.Metadata{
-		Name: "sys.net.recv.packets.host",
-		Unit: metric.Unit_COUNT,
+		Name:        "sys.net.recv.packets.host",
+		Unit:        metric.Unit_COUNT,
+		Measurement: "Packets received",
+		Help:        "Packets received on all network interfaces over the lifetime of this host",
 	}
 	metaHostNetSendBytes = metric.Metadata{
-		Name: "sys.net.send.bytes.host",
-		Unit: metric.Unit_BYTES,
+		Name:        "sys.net.send.bytes.host",
+		Unit:        metric.Unit_BYTES,
+		Measurement: "Bytes sent",
+		Help:        "Bytes sent on all network interfaces over the lifetime of this host",
 	}
 	metaHostNetSendPackets = metric.Metadata{
-		Name: "sys.net.send.packets.host",
-		Unit: metric.Unit_COUNT,
+		Name:        "sys.net.send.packets.host",
+		Unit:        metric.Unit_COUNT,
+		Measurement: "Packets sent",
+		Help:        "Packets sent on all network interfaces over the lifetime of this host",
 	}
 )
 
