@@ -16,6 +16,23 @@ export default function (props: GraphDashboardProps) {
     </LineGraph>,
 
     <LineGraph
+      title="CPU Percent"
+      sources={nodeSources}
+      // TODO(vilterp): tooltip
+    >
+      {/*TODO(vilterp): wtf how do we do percent*/}
+      <Axis units={AxisUnits.Count} label="CPU">
+        {nodeIDs.map((nid) => (
+          <Metric
+            name="cr.node.sys.cpu.user.percent"
+            title={nodeDisplayName(nodesSummary, nid)}
+            sources={[nid]}
+          />
+        ))}
+      </Axis>
+    </LineGraph>,
+
+    <LineGraph
       title="Memory Usage"
       sources={nodeSources}
       tooltip={(
@@ -28,23 +45,6 @@ export default function (props: GraphDashboardProps) {
         {nodeIDs.map((nid) => (
           <Metric
             name="cr.node.sys.rss"
-            title={nodeDisplayName(nodesSummary, nid)}
-            sources={[nid]}
-          />
-        ))}
-      </Axis>
-    </LineGraph>,
-
-    <LineGraph
-      title="CPU Percent"
-      sources={nodeSources}
-      // TODO(vilterp): tooltip
-    >
-      {/*TODO(vilterp): wtf how do we do percent*/}
-      <Axis units={AxisUnits.Count} label="CPU">
-        {nodeIDs.map((nid) => (
-          <Metric
-            name="cr.node.sys.cpu.user.percent"
             title={nodeDisplayName(nodesSummary, nid)}
             sources={[nid]}
           />
