@@ -135,7 +135,6 @@ var (
 		Unit:        metric.Unit_SECONDS,
 	}
 
-	// TODO(vilterp): help and measurement
 	metaHostDiskReadCount = metric.Metadata{
 		Name:        "sys.disk.read.count.host",
 		Unit:        metric.Unit_COUNT,
