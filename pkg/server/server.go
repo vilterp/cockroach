@@ -426,7 +426,11 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 	s.recorder = status.NewMetricsRecorder(s.clock, s.nodeLiveness, s.rpcContext, s.gossip, st)
 	s.registry.AddMetricStruct(s.rpcContext.RemoteClocks.Metrics())
 
-	s.runtime = status.MakeRuntimeStatSampler(s.clock)
+	s.runtime, err = status.MakeRuntimeStatSampler(context.Background(), s.clock)
+	if err != nil {
+		// TODO(vilterp): figure out something reasonable to do here
+		panic(err)
+	}
 	s.registry.AddMetricStruct(s.runtime)
 
 	s.node = NewNode(

@@ -229,6 +229,9 @@ type RuntimeStatSampler struct {
 	lastCgoCall   int64
 	lastNumGC     uint32
 
+	initialDiskCounters disk.IOCountersStat
+	initialNetCounters  net.IOCountersStat
+
 	// Only show "not implemented" errors once, we don't need the log spam.
 	fdUsageNotImplemented bool
 
@@ -272,7 +275,7 @@ type RuntimeStatSampler struct {
 }
 
 // MakeRuntimeStatSampler constructs a new RuntimeStatSampler object.
-func MakeRuntimeStatSampler(clock *hlc.Clock) RuntimeStatSampler {
+func MakeRuntimeStatSampler(ctx context.Context, clock *hlc.Clock) (RuntimeStatSampler, error) {
 	// Construct the build info metric. It is constant.
 	// We first build set the labels on the metadata.
 	info := build.GetInfo()
@@ -292,7 +295,7 @@ func MakeRuntimeStatSampler(clock *hlc.Clock) RuntimeStatSampler {
 	buildTimestamp := metric.NewGauge(metaBuildTimestamp)
 	buildTimestamp.Update(timestamp)
 
-	return RuntimeStatSampler{
+	rsr := RuntimeStatSampler{
 		clock:              clock,
 		startTimeNanos:     clock.PhysicalNow(),
 		CgoCalls:           metric.NewGauge(metaCgoCalls),
@@ -325,6 +328,19 @@ func MakeRuntimeStatSampler(clock *hlc.Clock) RuntimeStatSampler {
 		Uptime:             metric.NewGauge(metaUptime),
 		BuildTimestamp:     buildTimestamp,
 	}
+
+	diskCounters, err := getSummedDiskCounters(ctx)
+	if err != nil {
+		return RuntimeStatSampler{}, nil
+	}
+	rsr.initialDiskCounters = diskCounters
+	netCounters, err := getSummedNetStats(ctx)
+	if err != nil {
+		return RuntimeStatSampler{}, nil
+	}
+	rsr.initialNetCounters = netCounters
+
+	return rsr, nil
 }
 
 // SampleEnvironment queries the runtime system for various interesting metrics,
@@ -439,38 +455,50 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(ctx context.Context) {
 	rsr.Uptime.Update((now - rsr.startTimeNanos) / 1e9)
 }
 
-func (rsr *RuntimeStatSampler) recordDiskStats(ctx context.Context) error {
+func getSummedDiskCounters(ctx context.Context) (disk.IOCountersStat, error) {
 	ioCounters, err := disk.IOCountersWithContext(ctx)
 	if err != nil {
-		return err
+		return disk.IOCountersStat{}, err
 	}
 
-	summedIOCounters := sumDiskStats(ioCounters)
+	return sumDiskCounters(ioCounters), nil
+}
 
-	rsr.HostDiskReadBytes.Update(int64(summedIOCounters.ReadBytes))
-	rsr.HostDiskReadTime.Update(int64(summedIOCounters.ReadTime) * 1e6) // ms to ns
-	rsr.HostDiskReadCount.Update(int64(summedIOCounters.ReadCount))
-	rsr.HostDiskWriteBytes.Update(int64(summedIOCounters.WriteBytes))
-	rsr.HostDiskWriteCount.Update(int64(summedIOCounters.WriteCount))
-
-	// Get IOPS in progress.
-	disksStats, err := disk.IOCountersWithContext(ctx)
+func (rsr *RuntimeStatSampler) recordDiskStats(ctx context.Context) error {
+	summedDiskCounters, err := getSummedDiskCounters(ctx)
 	if err != nil {
 		return err
 	}
-	summedDiskStats := sumDiskStats(disksStats)
-	rsr.IopsInProgress.Update(int64(summedDiskStats.IopsInProgress))
+
+	subtractDiskCounters(&summedDiskCounters, rsr.initialDiskCounters)
+
+	rsr.HostDiskReadBytes.Update(int64(summedDiskCounters.ReadBytes))
+	rsr.HostDiskReadTime.Update(int64(summedDiskCounters.ReadTime) * 1e6) // ms to ns
+	rsr.HostDiskReadCount.Update(int64(summedDiskCounters.ReadCount))
+	rsr.HostDiskWriteBytes.Update(int64(summedDiskCounters.WriteBytes))
+	rsr.HostDiskWriteCount.Update(int64(summedDiskCounters.WriteCount))
+	rsr.IopsInProgress.Update(int64(summedDiskCounters.IopsInProgress))
 
 	return nil
 }
 
-func (rsr *RuntimeStatSampler) recordNetStats(ctx context.Context) error {
+func getSummedNetStats(ctx context.Context) (net.IOCountersStat, error) {
 	netCounters, err := net.IOCountersWithContext(ctx, true /* idk what this bool means */)
+	if err != nil {
+		return net.IOCountersStat{}, err
+	}
+
+	return sumNetworkCounters(netCounters), nil
+}
+
+func (rsr *RuntimeStatSampler) recordNetStats(ctx context.Context) error {
+	summedNetCounters, err := getSummedNetStats(ctx)
 	if err != nil {
 		return err
 	}
 
-	summedNetCounters := sumNetworkCounters(netCounters)
+	subtractNetworkCounters(&summedNetCounters, rsr.initialNetCounters)
+
 	rsr.HostNetSendBytes.Update(int64(summedNetCounters.BytesSent))
 	rsr.HostNetSendPackets.Update(int64(summedNetCounters.PacketsSent))
 	rsr.HostNetRecvBytes.Update(int64(summedNetCounters.BytesRecv))
@@ -479,7 +507,7 @@ func (rsr *RuntimeStatSampler) recordNetStats(ctx context.Context) error {
 	return nil
 }
 
-func sumDiskStats(disksStats map[string]disk.IOCountersStat) disk.IOCountersStat {
+func sumDiskCounters(disksStats map[string]disk.IOCountersStat) disk.IOCountersStat {
 	output := disk.IOCountersStat{}
 	for _, stats := range disksStats {
 		output.WriteCount += stats.WriteCount
@@ -495,6 +523,20 @@ func sumDiskStats(disksStats map[string]disk.IOCountersStat) disk.IOCountersStat
 	return output
 }
 
+// subtractDiskCounters subtracts the counters in `sub` from the counters in `from`,
+// saving the results in `from`.
+func subtractDiskCounters(from *disk.IOCountersStat, sub disk.IOCountersStat) {
+	from.WriteCount -= sub.WriteCount
+	from.WriteTime -= sub.WriteTime
+	from.WriteBytes -= sub.WriteBytes
+
+	from.ReadCount -= sub.ReadCount
+	from.ReadTime -= sub.ReadTime
+	from.ReadBytes -= sub.ReadBytes
+
+	from.IopsInProgress -= sub.IopsInProgress
+}
+
 func sumNetworkCounters(netCounters []net.IOCountersStat) net.IOCountersStat {
 	output := net.IOCountersStat{}
 	for _, counter := range netCounters {
@@ -504,4 +546,11 @@ func sumNetworkCounters(netCounters []net.IOCountersStat) net.IOCountersStat {
 		output.PacketsSent += counter.PacketsSent
 	}
 	return output
+}
+
+func subtractNetworkCounters(from *net.IOCountersStat, sub net.IOCountersStat) {
+	from.BytesRecv -= sub.BytesRecv
+	from.BytesSent -= sub.BytesSent
+	from.PacketsRecv -= sub.PacketsRecv
+	from.PacketsSent -= sub.PacketsSent
 }
