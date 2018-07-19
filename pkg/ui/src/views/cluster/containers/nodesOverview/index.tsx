@@ -112,6 +112,11 @@ class LiveNodeList extends React.Component<NodeCategoryListProps, {}> {
               },
               sort: (ns) => ns.started_at,
             },
+            {
+              title: "Locality",
+              cell: (ns) => ns.desc.locality.tiers.map((t) => `${t.key}=${t.value}`).join("/"),
+              sort: (ns) => ns.desc.locality.tiers.map((t) => `${t.key}=${t.value}`).join("/"),
+            },
             // Used Capacity - displays the total persisted bytes maintained by the node.
             {
               title: "Used Capacity",
