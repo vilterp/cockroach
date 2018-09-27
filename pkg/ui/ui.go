@@ -90,11 +90,11 @@ var indexHTMLTemplate = template.Must(template.New("index").Parse(`<!DOCTYPE htm
 `))
 
 type indexHTMLArgs struct {
-	ExperimentalUseLogin bool
-	LoginEnabled         bool
-	LoggedInUser         *string
-	Tag                  string
-	Version              string
+	LoginRequired bool
+	LoginDisabled bool
+	LoggedInUser  *string
+	Tag           string
+	Version       string
 }
 
 // bareIndexHTML is used in place of indexHTMLTemplate when the binary is built
@@ -107,9 +107,13 @@ Binary built without web UI.
 
 // Config contains the configuration parameters for Handler.
 type Config struct {
-	ExperimentalUseLogin bool
-	LoginEnabled         bool
-	GetUser              func(ctx context.Context) *string
+	// LoginRequired indicates that the user has to log in to use the admin UI.
+	LoginRequired bool
+	// LoginDisabled indicates that login was is not required because it was explicitly
+	// disabled, even though this is a secure cluster. This should only be true if
+	// LoginRequired is false.
+	LoginDisabled bool
+	GetUser       func(ctx context.Context) *string
 }
 
 // Handler returns an http.Handler that serves the UI,
@@ -136,11 +140,11 @@ func Handler(cfg Config) http.Handler {
 		}
 
 		if err := indexHTMLTemplate.Execute(w, indexHTMLArgs{
-			ExperimentalUseLogin: cfg.ExperimentalUseLogin,
-			LoginEnabled:         cfg.LoginEnabled,
-			LoggedInUser:         cfg.GetUser(r.Context()),
-			Tag:                  buildInfo.Tag,
-			Version:              build.VersionPrefix(),
+			LoginRequired: cfg.LoginRequired,
+			LoginDisabled: cfg.LoginDisabled,
+			LoggedInUser:  cfg.GetUser(r.Context()),
+			Tag:           buildInfo.Tag,
+			Version:       build.VersionPrefix(),
 		}); err != nil {
 			err = errors.Wrap(err, "templating index.html")
 			http.Error(w, err.Error(), 500)

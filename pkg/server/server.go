@@ -1583,8 +1583,8 @@ func (s *Server) Start(ctx context.Context) error {
 	authenticatedUIHandler := newAuthenticationMuxAllowAnonymous(
 		s.authentication,
 		ui.Handler(ui.Config{
-			ExperimentalUseLogin: s.cfg.EnableWebSessionAuthentication,
-			LoginEnabled:         s.cfg.RequireWebSession(),
+			LoginRequired: s.cfg.RequireWebSession(),
+			LoginDisabled: s.cfg.DisableWebSessionAuthentication,
 			GetUser: func(ctx context.Context) *string {
 				if u, ok := ctx.Value(webSessionUserKey{}).(string); ok {
 					return &u

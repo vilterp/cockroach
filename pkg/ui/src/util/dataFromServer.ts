@@ -1,6 +1,6 @@
 export interface DataFromServer {
-  ExperimentalUseLogin: boolean;
-  LoginEnabled: boolean;
+  LoginRequired: boolean;
+  LoginDisabled: boolean;
   LoggedInUser: string;
   Tag: string;
   Version: string;

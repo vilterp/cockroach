@@ -249,9 +249,9 @@ type Config struct {
 	// in a timely fashion, typically 30s after the server starts listening.
 	DelayedBootstrapFn func()
 
-	// EnableWebSessionAuthentication enables session-based authentication for
+	// DisableWebSessionAuthentication disables session-based authentication for
 	// the Admin API's HTTP endpoints.
-	EnableWebSessionAuthentication bool
+	DisableWebSessionAuthentication bool
 
 	// ConnResultsBufferBytes is the size of the buffer in which each connection
 	// accumulates results set. Results are flushed to the network when this
@@ -326,17 +326,17 @@ func MakeConfig(ctx context.Context, st *cluster.Settings) Config {
 	disableWebLogin := envutil.EnvOrDefaultBool("COCKROACH_DISABLE_WEB_LOGIN", false)
 
 	cfg := Config{
-		Config:                         new(base.Config),
-		MaxOffset:                      MaxOffsetType(base.DefaultMaxClockOffset),
-		Settings:                       st,
-		CacheSize:                      DefaultCacheSize,
-		SQLMemoryPoolSize:              defaultSQLMemoryPoolSize,
-		SQLTableStatCacheSize:          defaultSQLTableStatCacheSize,
-		ScanInterval:                   defaultScanInterval,
-		ScanMinIdleTime:                defaultScanMinIdleTime,
-		ScanMaxIdleTime:                defaultScanMaxIdleTime,
-		EventLogEnabled:                defaultEventLogEnabled,
-		EnableWebSessionAuthentication: !disableWebLogin,
+		Config:                          new(base.Config),
+		MaxOffset:                       MaxOffsetType(base.DefaultMaxClockOffset),
+		Settings:                        st,
+		CacheSize:                       DefaultCacheSize,
+		SQLMemoryPoolSize:               defaultSQLMemoryPoolSize,
+		SQLTableStatCacheSize:           defaultSQLTableStatCacheSize,
+		ScanInterval:                    defaultScanInterval,
+		ScanMinIdleTime:                 defaultScanMinIdleTime,
+		ScanMaxIdleTime:                 defaultScanMaxIdleTime,
+		EventLogEnabled:                 defaultEventLogEnabled,
+		DisableWebSessionAuthentication: !disableWebLogin,
 		Stores: base.StoreSpecList{
 			Specs: []base.StoreSpec{storeSpec},
 		},
@@ -550,7 +550,7 @@ func (cfg *Config) FilterGossipBootstrapResolvers(
 // RequireWebSession indicates whether the server should require authentication
 // sessions when serving admin API requests.
 func (cfg *Config) RequireWebSession() bool {
-	return !cfg.Insecure && cfg.EnableWebSessionAuthentication
+	return !(cfg.Insecure || cfg.DisableWebSessionAuthentication)
 }
 
 // readEnvironmentVariables populates all context values that are environment

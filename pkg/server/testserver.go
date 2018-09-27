@@ -95,9 +95,6 @@ func makeTestConfig(st *cluster.Settings) Config {
 	cfg.User = security.NodeUser
 	cfg.TimestampCachePageSize = tscache.TestSklPageSize
 
-	// Enable web session authentication.
-	cfg.EnableWebSessionAuthentication = true
-
 	return cfg
 }
 
@@ -174,7 +171,7 @@ func makeTestConfigFromParams(params base.TestServerArgs) Config {
 		cfg.HTTPAddr = params.HTTPAddr
 	}
 	if params.DisableWebSessionAuthentication {
-		cfg.EnableWebSessionAuthentication = false
+		cfg.DisableWebSessionAuthentication = true
 	}
 
 	// Ensure we have the correct number of engines. Add in-memory ones where

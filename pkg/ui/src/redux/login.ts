@@ -88,11 +88,11 @@ class NoLoginState {
 export const selectLoginState = createSelector(
   (state: AdminUIState) => state.login,
   (login: LoginAPIState) => {
-    if (!dataFromServer.ExperimentalUseLogin) {
+    if (!dataFromServer.LoginRequired) {
       return new NoLoginState();
     }
 
-    if (!dataFromServer.LoginEnabled) {
+    if (dataFromServer.LoginDisabled) {
       return new LoginDisabledState();
     }
 
