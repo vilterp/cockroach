@@ -1183,11 +1183,6 @@ func (s *Server) Start(ctx context.Context) error {
 		netutil.FatalIfUnexpected(s.grpc.Serve(anyL))
 	})
 
-	// Running the SQL migrations safely requires that we aren't serving SQL
-	// requests at the same time -- to ensure that, block the serving of SQL
-	// traffic until the migrations are done, as indicated by this channel.
-	serveSQL := make(chan bool)
-
 	tcpKeepAlive := envutil.EnvOrDefaultDuration("COCKROACH_SQL_TCP_KEEP_ALIVE", time.Minute)
 	var loggedKeepAliveStatus int32
 
@@ -1574,7 +1569,6 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}
 	log.Infof(ctx, "done ensuring all necessary migrations have run")
-	close(serveSQL)
 
 	log.Info(ctx, "serving sql connections")
 	// Start servicing SQL connections.
@@ -1623,7 +1617,6 @@ func (s *Server) Start(ctx context.Context) error {
 	pgCtx := s.pgServer.AmbientCtx.AnnotateCtx(context.Background())
 	s.stopper.RunWorker(pgCtx, func(pgCtx context.Context) {
 		select {
-		case <-serveSQL:
 		case <-s.stopper.ShouldQuiesce():
 			return
 		}
@@ -1659,7 +1652,6 @@ func (s *Server) Start(ctx context.Context) error {
 
 		s.stopper.RunWorker(pgCtx, func(pgCtx context.Context) {
 			select {
-			case <-serveSQL:
 			case <-s.stopper.ShouldQuiesce():
 				return
 			}
