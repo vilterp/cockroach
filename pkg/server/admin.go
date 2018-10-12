@@ -610,20 +610,22 @@ func (s *adminServer) tableStatsForSpan(
 	}
 
 	// Extract a list of node IDs from the response.
-	nodeIDs := make(map[roachpb.NodeID]struct{})
+	replicasByNodeID := make(map[roachpb.NodeID]int64)
 	for _, kv := range rangeDescKVs {
 		var rng roachpb.RangeDescriptor
 		if err := kv.Value.GetProto(&rng); err != nil {
 			return nil, s.serverError(err)
 		}
 		for _, repl := range rng.Replicas {
-			nodeIDs[repl.NodeID] = struct{}{}
+			replCount := replicasByNodeID[repl.NodeID]
+			replicasByNodeID[repl.NodeID] = replCount + 1
 		}
 	}
 
 	// Construct TableStatsResponse by sending an RPC to every node involved.
 	tableStatResponse := serverpb.TableStatsResponse{
-		NodeCount: int64(len(nodeIDs)),
+		NodeCount:            int64(len(replicasByNodeID)),
+		ReplicaCountByNodeId: replicasByNodeID,
 		// TODO(mrtracy): The "RangeCount" returned by TableStats is more
 		// accurate than the "RangeCount" returned by TableDetails, because this
 		// method always consistently queries the meta2 key range for the table;
@@ -647,8 +649,8 @@ func (s *adminServer) tableStatsForSpan(
 	}
 
 	// Send a SpanStats query to each node.
-	responses := make(chan nodeResponse, len(nodeIDs))
-	for nodeID := range nodeIDs {
+	responses := make(chan nodeResponse, len(replicasByNodeID))
+	for nodeID := range replicasByNodeID {
 		nodeID := nodeID // avoid data race
 		if err := s.server.stopper.RunAsyncTask(
 			ctx, "server.adminServer: requesting remote stats",
@@ -678,7 +680,7 @@ func (s *adminServer) tableStatsForSpan(
 			return nil, err
 		}
 	}
-	for remainingResponses := len(nodeIDs); remainingResponses > 0; remainingResponses-- {
+	for remainingResponses := len(replicasByNodeID); remainingResponses > 0; remainingResponses-- {
 		select {
 		case resp := <-responses:
 			// For nodes which returned an error, note that the node's data
@@ -1406,164 +1408,6 @@ func (s *adminServer) Decommission(
 		return nil, err
 	}
 	return s.DecommissionStatus(ctx, &serverpb.DecommissionStatusRequest{NodeIDs: nodeIDs})
-}
-
-// DataDistribution returns a count of replicas on each node for each table.
-func (s *adminServer) DataDistribution(
-	ctx context.Context, req *serverpb.DataDistributionRequest,
-) (*serverpb.DataDistributionResponse, error) {
-	resp := &serverpb.DataDistributionResponse{
-		DatabaseInfo: make(map[string]serverpb.DataDistributionResponse_DatabaseInfo),
-		ZoneConfigs:  make(map[string]serverpb.DataDistributionResponse_ZoneConfig),
-	}
-
-	// Get ids and names for databases and tables.
-	// Set up this structure in the response.
-
-	// This relies on crdb_internal.tables returning data even for newly added tables
-	// and deleted tables (as opposed to e.g. information_schema) because we are interested
-	// in the data for all ranges, not just ranges for visible tables.
-	userName := s.getUser(req)
-	tablesQuery := `SELECT name, table_id, database_name, drop_time FROM "".crdb_internal.tables`
-	rows1, _ /* cols */, err := s.server.internalExecutor.QueryWithUser(
-		ctx, "admin-replica-matrix", nil /* txn */, userName, tablesQuery,
-	)
-	if err != nil {
-		return nil, s.serverError(err)
-	}
-
-	// Used later when we're scanning Meta2 and only have IDs, not names.
-	tableInfosByTableID := map[uint64]serverpb.DataDistributionResponse_TableInfo{}
-
-	for _, row := range rows1 {
-		tableName := (*string)(row[0].(*tree.DString))
-		tableID := uint64(tree.MustBeDInt(row[1]))
-		dbName := (*string)(row[2].(*tree.DString))
-
-		// Look at whether it was dropped.
-		var droppedAtTime *time.Time
-		droppedAtDatum, ok := row[3].(*tree.DTimestamp)
-		if ok {
-			droppedAtTime = &droppedAtDatum.Time
-		}
-
-		// Insert database if it doesn't exist.
-		dbInfo, ok := resp.DatabaseInfo[*dbName]
-		if !ok {
-			dbInfo = serverpb.DataDistributionResponse_DatabaseInfo{
-				TableInfo: make(map[string]serverpb.DataDistributionResponse_TableInfo),
-			}
-			resp.DatabaseInfo[*dbName] = dbInfo
-		}
-
-		// Get zone config for table.
-		zcID := int64(0)
-
-		if droppedAtTime == nil {
-			// TODO(vilterp): figure out a way to get zone configs for tables that are dropped
-			zoneConfigQuery := fmt.Sprintf(
-				`SELECT zone_id, cli_specifier FROM [SHOW ZONE CONFIGURATION FOR TABLE %s.%s]`,
-				(*tree.Name)(dbName), (*tree.Name)(tableName),
-			)
-			rows, _ /* cols */, err := s.server.internalExecutor.QueryWithUser(
-				ctx, "admin-replica-matrix", nil /* txn */, userName, zoneConfigQuery,
-			)
-			if err != nil {
-				return nil, s.serverError(err)
-			}
-
-			if len(rows) != 1 {
-				return nil, s.serverError(fmt.Errorf(
-					"could not get zone config for table %s; %d rows returned", *tableName, len(rows),
-				))
-			}
-			zcRow := rows[0]
-			zcID = int64(tree.MustBeDInt(zcRow[0]))
-		}
-
-		// Insert table.
-		tableInfo := serverpb.DataDistributionResponse_TableInfo{
-			ReplicaCountByNodeId: make(map[roachpb.NodeID]int64),
-			ZoneConfigId:         zcID,
-			DroppedAt:            droppedAtTime,
-		}
-		dbInfo.TableInfo[*tableName] = tableInfo
-		tableInfosByTableID[tableID] = tableInfo
-	}
-
-	// Get replica counts.
-	if err := s.server.db.Txn(ctx, func(txnCtx context.Context, txn *client.Txn) error {
-		acct := s.memMonitor.MakeBoundAccount()
-		defer acct.Close(txnCtx)
-
-		kvs, err := sql.ScanMetaKVs(ctx, txn, roachpb.Span{
-			Key:    keys.UserTableDataMin,
-			EndKey: keys.MaxKey,
-		})
-		if err != nil {
-			return err
-		}
-
-		// Group replicas by table and node, accumulate counts.
-		var rangeDesc roachpb.RangeDescriptor
-		for _, kv := range kvs {
-			if err := acct.Grow(txnCtx, int64(len(kv.Key)+len(kv.Value.RawBytes))); err != nil {
-				return err
-			}
-			if err := kv.ValueProto(&rangeDesc); err != nil {
-				return err
-			}
-
-			_, tableID, err := keys.DecodeTablePrefix(rangeDesc.StartKey.AsRawKey())
-			if err != nil {
-				return err
-			}
-
-			for _, replicaDesc := range rangeDesc.Replicas {
-				tableInfo, ok := tableInfosByTableID[tableID]
-				if !ok {
-					// This is a database, skip.
-					continue
-				}
-				tableInfo.ReplicaCountByNodeId[replicaDesc.NodeID]++
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, s.serverError(err)
-	}
-
-	// Get zone configs.
-	// TODO(vilterp): this can be done in parallel with getting table/db names and replica counts.
-	zoneConfigsQuery := `
-		SELECT zone_name, config_sql, config_protobuf 
-		FROM crdb_internal.zones
-		WHERE zone_name IS NOT NULL
-	`
-	rows2, _ /* cols */, err := s.server.internalExecutor.QueryWithUser(
-		ctx, "admin-replica-matrix", nil /* txn */, userName, zoneConfigsQuery,
-	)
-	if err != nil {
-		return nil, s.serverError(err)
-	}
-
-	for _, row := range rows2 {
-		zoneName := string(tree.MustBeDString(row[0]))
-		zcSQL := tree.MustBeDString(row[1])
-		zcBytes := tree.MustBeDBytes(row[2])
-		var zcProto config.ZoneConfig
-		if err := protoutil.Unmarshal([]byte(zcBytes), &zcProto); err != nil {
-			return nil, s.serverError(err)
-		}
-
-		resp.ZoneConfigs[zoneName] = serverpb.DataDistributionResponse_ZoneConfig{
-			ZoneName:  zoneName,
-			Config:    zcProto,
-			ConfigSQL: string(zcSQL),
-		}
-	}
-
-	return resp, nil
 }
 
 // EnqueueRange runs the specified range through the specified queue, returning

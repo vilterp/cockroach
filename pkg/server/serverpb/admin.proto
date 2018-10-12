@@ -197,6 +197,7 @@ message TableStatsResponse {
   // node_count is the number of nodes which contain data for this table,
   // according to a query of range meta keys.
   int64 node_count = 3;
+  map<int64, int64> replica_count_by_node_id = 7 [(gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
   // stats is the summation of MVCCStats for all replicas of this table
   // across the cluster.
   cockroach.storage.engine.enginepb.MVCCStats stats = 4 [(gogoproto.nullable) = false];
@@ -548,20 +549,44 @@ message DataDistributionResponse {
     string config_sql = 4 [(gogoproto.customname) = "ConfigSQL"];
   }
 
-  message TableInfo {
-    map<int32, int64> replica_count_by_node_id = 1 [(gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+  message PartitionInfo {
+    string name = 1;
+    repeated PartitionInfo sub_partitions = 2;
+    map<int32, int64> replica_count_by_node_id = 3 [(gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+  }
 
-    int64 zone_config_id = 2;
-    google.protobuf.Timestamp dropped_at = 3 [(gogoproto.stdtime) = true];
+  message IndexInfo {
+    string name = 1;
+    uint32 id = 2 [
+      (gogoproto.customname) = "ID",
+      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sqlbase.IndexID"
+    ];
+    // By partition name.
+    repeated PartitionInfo partitions = 3;
+    TableStatsResponse stats = 4;
+  }
+
+  message TableInfo {
+    uint32 id = 1 [
+      (gogoproto.customname) = "ID",
+      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sqlbase.ID"
+    ];
+    string name = 2;
+    int64 zone_config_id = 3;
+    google.protobuf.Timestamp dropped_at = 4 [(gogoproto.stdtime) = true];
+    repeated IndexInfo indexes = 5;
   }
 
   message DatabaseInfo {
-    // By table name.
-    map<string, TableInfo> table_info = 1 [(gogoproto.nullable) = false];
+    uint32 id = 1 [
+      (gogoproto.customname) = "ID",
+      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sqlbase.ID"
+    ];
+    string name = 2;
+    repeated TableInfo tables = 3;
   }
 
-  // By database name.
-  map<string, DatabaseInfo> database_info = 1 [(gogoproto.nullable) = false];
+  repeated DatabaseInfo databases = 1;
 
   reserved 2;
 
