@@ -3,8 +3,6 @@ package server
 import (
 	"context"
 
-	"fmt"
-
 	"github.com/cockroachdb/cockroach/pkg/config"
 	"github.com/cockroachdb/cockroach/pkg/internal/client"
 	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
@@ -90,11 +88,13 @@ func (s *adminServer) getIndexTree(
 	ctx context.Context, tableDesc sqlbase.TableDescriptor, index sqlbase.IndexDescriptor,
 ) (*serverpb.DataDistributionResponse_IndexInfo, error) {
 	indexSpan := tableDesc.IndexSpan(index.ID)
-	fmt.Println("index span", tableDesc.ID, index.ID, indexSpan)
 	indexStats, err := s.tableStatsForSpan(ctx, indexSpan)
 	if err != nil {
 		return nil, err
 	}
+
+	//sql.GetZoneConfigInTxn(ctx, txn, uint32(tableDesc.ID), &index, partitionName, true)
+
 	return &serverpb.DataDistributionResponse_IndexInfo{
 		ID:         index.ID,
 		Name:       index.Name,
