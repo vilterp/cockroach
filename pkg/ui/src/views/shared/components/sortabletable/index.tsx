@@ -146,12 +146,14 @@ export class SortableTable extends React.Component<TableProps> {
       { "sort-table__row--expandable": !!expandableConfig },
     );
     const expanded = expandableConfig && expandableConfig.rowIsExpanded(rowIndex);
-    const onClickExpand = expandableConfig && expandableConfig.onChangeExpansion;
+    const handleClickRow = expandableConfig
+      ? () => expandableConfig.onChangeExpansion(rowIndex, !expanded)
+      : null;
     const output = [
       <tr
         key={rowIndex}
         className={classes}
-        onClick={() => onClickExpand(rowIndex, !expanded)}
+        onClick={handleClickRow}
       >
         {expandableConfig ? this.expansionControl(expanded) : null}
         {_.map(columns, (c: SortableColumn, colIndex: number) => {
