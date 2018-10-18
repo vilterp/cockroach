@@ -92,7 +92,8 @@ var enableRPCCompression = envutil.EnvOrDefaultBool("COCKROACH_ENABLE_RPC_COMPRE
 func spanInclusionFunc(
 	parentSpanCtx opentracing.SpanContext, method string, req, resp interface{},
 ) bool {
-	return parentSpanCtx != nil && !tracing.IsNoopContext(parentSpanCtx)
+	//return parentSpanCtx != nil && !tracing.IsNoopContext(parentSpanCtx)
+	return true
 }
 
 func requireSuperUser(ctx context.Context) error {
