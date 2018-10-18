@@ -1178,7 +1178,7 @@ func (s *statusServer) Ranges(
 	includeRawKeys := debug.GatewayRemoteAllowed(ctx, s.st)
 
 	constructRangeInfo := func(
-		desc roachpb.RangeDescriptor, rep *storage.Replica, storeID roachpb.StoreID, metrics storage.ReplicaMetrics,
+		desc roachpb.RangeDescriptor, rep *storage.Replica, store *storage.Store, metrics storage.ReplicaMetrics,
 	) serverpb.RangeInfo {
 		raftStatus := rep.RaftStatus()
 		raftState := convertRaftStatus(raftStatus)
@@ -1201,21 +1201,13 @@ func (s *statusServer) Ranges(
 			RaftState:     raftState,
 			State:         state,
 			SourceNodeID:  nodeID,
-			SourceStoreID: storeID,
+			SourceStoreID: store.Ident.StoreID,
 			LeaseHistory:  leaseHistory,
 			Stats: serverpb.RangeStatistics{
 				QueriesPerSecond: rep.QueriesPerSecond(),
 				WritesPerSecond:  rep.WritesPerSecond(),
 			},
-			Problems: serverpb.RangeProblems{
-				Unavailable:            metrics.Unavailable,
-				LeaderNotLeaseHolder:   metrics.Leader && metrics.LeaseValid && !metrics.Leaseholder,
-				NoRaftLeader:           !storage.HasRaftLeader(raftStatus) && !metrics.Quiescent,
-				Underreplicated:        metrics.Underreplicated,
-				NoLease:                metrics.Leader && !metrics.LeaseValid && !metrics.Quiescent,
-				QuiescentEqualsTicking: raftStatus != nil && metrics.Quiescent == metrics.Ticking,
-				RaftLogTooLarge:        metrics.RaftLogTooLarge,
-			},
+			Problems:    store.RangeProblems(metrics, raftStatus),
 			CmdQLocal:   serverpb.CommandQueueMetrics(metrics.CmdQMetricsLocal),
 			CmdQGlobal:  serverpb.CommandQueueMetrics(metrics.CmdQMetricsGlobal),
 			LeaseStatus: metrics.LeaseStatus,
@@ -1244,7 +1236,7 @@ func (s *statusServer) Ranges(
 						constructRangeInfo(
 							desc,
 							rep,
-							store.Ident.StoreID,
+							store,
 							rep.Metrics(ctx, timestamp, isLiveMap, availableNodes),
 						))
 					return false, nil
@@ -1264,7 +1256,7 @@ func (s *statusServer) Ranges(
 				constructRangeInfo(
 					*desc,
 					rep,
-					store.Ident.StoreID,
+					store,
 					rep.Metrics(ctx, timestamp, isLiveMap, availableNodes),
 				))
 		}
@@ -1570,13 +1562,21 @@ func (s *statusServer) SpanStats(
 
 	output := &serverpb.SpanStatsResponse{}
 	err = s.stores.VisitStores(func(store *storage.Store) error {
-		result, err := store.ComputeStatsForKeySpan(req.StartKey.Next(), req.EndKey)
+		result, err := store.ComputeStatsForKeySpan(
+			req.StartKey.Next(),
+			req.EndKey,
+			s.nodeLiveness.GetIsLiveMap(),
+			s.storePool.AvailableNodeCount(),
+		)
 		if err != nil {
 			return err
 		}
 		output.TotalStats.Add(result.MVCC)
 		output.RangeCount += int32(result.ReplicaCount)
 		output.ApproximateDiskBytes += result.ApproximateDiskBytes
+		for rangeID, rangeProblems := range result.Problems {
+			output.ProblemsByRangeID[rangeID] = rangeProblems
+		}
 		return nil
 	})
 	if err != nil {

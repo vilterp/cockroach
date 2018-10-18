@@ -638,7 +638,8 @@ func (s *adminServer) tableStatsForSpan(
 		// the advantage of populating the cache (without the disadvantage of
 		// potentially returning stale data).
 		// See Github #5435 for some discussion.
-		RangeCount: int64(len(rangeDescKVs)),
+		RangeCount:        int64(len(rangeDescKVs)),
+		ProblemsByRangeID: make(map[roachpb.RangeID]serverpb.RangeProblems),
 	}
 	type nodeResponse struct {
 		nodeID roachpb.NodeID
@@ -695,6 +696,12 @@ func (s *adminServer) tableStatsForSpan(
 				tableStatResponse.Stats.Add(resp.resp.TotalStats)
 				tableStatResponse.ReplicaCount += int64(resp.resp.RangeCount)
 				tableStatResponse.ApproximateDiskBytes += resp.resp.ApproximateDiskBytes
+
+				for rangeID, rangeProblems := range resp.resp.ProblemsByRangeID {
+					// TODO(vilterp): this won't overwrite, will it?
+					// I suppose it could
+					tableStatResponse.ProblemsByRangeID[rangeID] = rangeProblems
+				}
 			}
 		case <-ctx.Done():
 			// Caller gave up, stop doing work.

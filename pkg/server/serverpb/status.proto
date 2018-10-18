@@ -523,6 +523,12 @@ message SpanStatsResponse {
   uint64 approximate_disk_bytes = 3;
   cockroach.storage.engine.enginepb.MVCCStats total_stats = 1
       [ (gogoproto.nullable) = false ];
+
+  map<int64, RangeProblems> problems_by_range_id = 4 [
+    (gogoproto.customname) = "ProblemsByRangeID",
+    (gogoproto.nullable) = false,
+    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"
+  ];
 }
 
 message ProblemRangesRequest {

@@ -42,6 +42,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
+	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlutil"
@@ -4339,12 +4340,17 @@ type StoreKeySpanStats struct {
 	ReplicaCount         int
 	MVCC                 enginepb.MVCCStats
 	ApproximateDiskBytes uint64
+	Problems             map[roachpb.RangeID]serverpb.RangeProblems
 }
 
 // ComputeStatsForKeySpan computes the aggregated MVCCStats for all replicas on
 // this store which contain any keys in the supplied range.
-func (s *Store) ComputeStatsForKeySpan(startKey, endKey roachpb.RKey) (StoreKeySpanStats, error) {
-	var result StoreKeySpanStats
+func (s *Store) ComputeStatsForKeySpan(
+	startKey, endKey roachpb.RKey, livenessMap IsLiveMap, availableNodes int,
+) (StoreKeySpanStats, error) {
+	result := StoreKeySpanStats{
+		Problems: make(map[roachpb.RangeID]serverpb.RangeProblems),
+	}
 
 	newStoreReplicaVisitor(s).Visit(func(repl *Replica) bool {
 		desc := repl.Desc()
@@ -4353,12 +4359,31 @@ func (s *Store) ComputeStatsForKeySpan(startKey, endKey roachpb.RKey) (StoreKeyS
 		}
 		result.MVCC.Add(repl.GetMVCCStats())
 		result.ReplicaCount++
+
+		metrics := repl.Metrics(context.Background(), s.Clock().Now(), livenessMap, availableNodes)
+		problems := s.RangeProblems(metrics, repl.RaftStatus())
+		if problems.AnyProblems() {
+			result.Problems[repl.RangeID] = problems
+		}
+
 		return true
 	})
 
 	var err error
 	result.ApproximateDiskBytes, err = s.engine.ApproximateDiskBytes(startKey.AsRawKey(), endKey.AsRawKey())
 	return result, err
+}
+
+func (s *Store) RangeProblems(metrics ReplicaMetrics, raftStatus *raft.Status) serverpb.RangeProblems {
+	return serverpb.RangeProblems{
+		Unavailable:            metrics.Unavailable,
+		LeaderNotLeaseHolder:   metrics.Leader && metrics.LeaseValid && !metrics.Leaseholder,
+		NoRaftLeader:           !HasRaftLeader(raftStatus) && !metrics.Quiescent,
+		Underreplicated:        metrics.Underreplicated,
+		NoLease:                metrics.Leader && !metrics.LeaseValid && !metrics.Quiescent,
+		QuiescentEqualsTicking: raftStatus != nil && metrics.Quiescent == metrics.Ticking,
+		RaftLogTooLarge:        metrics.RaftLogTooLarge,
+	}
 }
 
 // AllocatorDryRun runs the given replica through the allocator without actually

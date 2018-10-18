@@ -214,6 +214,11 @@ message TableStatsResponse {
   // A list of nodes which should contain data for this table (according to
   // cluster metadata), but could not be contacted during this request.
   repeated MissingNode missing_nodes = 5 [(gogoproto.nullable) = false];
+  map<int64, RangeProblems> problems_by_range_id = 7 [
+    (gogoproto.customname) = "ProblemsByRangeID",
+    (gogoproto.nullable) = false,
+    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"
+  ];
 }
 
 // NonTableStatsRequest requests statistics on cluster data ranges that do not
