@@ -807,3 +807,28 @@ func TestNodeSendUnknownBatchRequest(t *testing.T) {
 		t.Fatalf("expected unsupported request, not %v", br.Error)
 	}
 }
+
+func TestDiffAlertEvents(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	prevAlerts := []statuspb.HealthAlert{
+		{Description: "A"},
+		{Description: "B"},
+	}
+	newAlerts := []statuspb.HealthAlert{
+		{Description: "B"},
+		{Description: "C"},
+	}
+	diffResult := diffAlerts(prevAlerts, newAlerts)
+	expectedResult := alertDiffResult{
+		closedAlerts: []statuspb.HealthAlert{
+			{Description: "A"},
+		},
+		openedAlerts: []statuspb.HealthAlert{
+			{Description: "C"},
+		},
+	}
+	if !reflect.DeepEqual(diffResult, expectedResult) {
+		t.Fatalf("expected %v; got %v", expectedResult, diffResult)
+	}
+}

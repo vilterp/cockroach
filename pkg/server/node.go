@@ -32,6 +32,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/server/status"
+	"github.com/cockroachdb/cockroach/pkg/server/status/statuspb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql"
@@ -877,6 +878,7 @@ func (n *Node) writeNodeStatus(ctx context.Context, alertTTL time.Duration) erro
 		if result := n.recorder.CheckHealth(ctx, *nodeStatus); len(result.Alerts) != 0 {
 			var numNodes int
 			if err := n.storeCfg.Gossip.IterateInfos(gossip.KeyNodeIDPrefix, func(k string, info gossip.Info) error {
+
 				numNodes++
 				return nil
 			}); err != nil {
@@ -886,6 +888,13 @@ func (n *Node) writeNodeStatus(ctx context.Context, alertTTL time.Duration) erro
 				// Avoid this warning on single-node clusters, which require special UX.
 				log.Warningf(ctx, "health alerts detected: %+v", result)
 			}
+
+			// Write events based on diff between current and new alerts.
+			// TODO(vilterp): this always errors the first time because the gossip key isn't there
+			if err := n.writeAlertEvents(ctx, result); err != nil {
+				log.Warningf(ctx, "unable to write alert diff events: %+v", err)
+			}
+			// Write new alerts.
 			if err := n.storeCfg.Gossip.AddInfoProto(
 				gossip.MakeNodeHealthAlertKey(n.Descriptor.NodeID), &result, alertTTL,
 			); err != nil {
@@ -902,6 +911,78 @@ func (n *Node) writeNodeStatus(ctx context.Context, alertTTL time.Duration) erro
 		err = runErr
 	}
 	return err
+}
+
+func (n *Node) writeAlertEvents(ctx context.Context, newHealthChecks statuspb.HealthCheckResult) error {
+	// Get previous healthchecks.
+	prevHealthChecks := statuspb.HealthCheckResult{}
+	if err := n.storeCfg.Gossip.GetInfoProto(
+		gossip.MakeNodeHealthAlertKey(n.Descriptor.NodeID),
+		&prevHealthChecks,
+	); err != nil {
+		return err
+	}
+	// Diff with new health checks.
+	diffResult := diffAlerts(prevHealthChecks.Alerts, newHealthChecks.Alerts)
+	for _, closedAlert := range diffResult.closedAlerts {
+		n.writeAlertEvent(ctx, sql.EventLogAlertClose, closedAlert)
+	}
+	for _, openedAlert := range diffResult.closedAlerts {
+		n.writeAlertEvent(ctx, sql.EventLogAlertOpen, openedAlert)
+	}
+
+	return nil
+}
+
+type alertDiffResult struct {
+	openedAlerts []statuspb.HealthAlert
+	closedAlerts []statuspb.HealthAlert
+}
+
+func diffAlerts(
+	curAlerts []statuspb.HealthAlert, newAlerts []statuspb.HealthAlert,
+) alertDiffResult {
+	result := alertDiffResult{}
+	alertsByDescription := map[string]statuspb.HealthAlert{}
+	for _, prevAlert := range curAlerts {
+		alertsByDescription[prevAlert.Description] = prevAlert
+	}
+	for _, newAlert := range newAlerts {
+		if _, ok := alertsByDescription[newAlert.Description]; ok {
+			// Alert was already there; don't write an event.
+			delete(alertsByDescription, newAlert.Description)
+		} else {
+			result.openedAlerts = append(result.openedAlerts, newAlert)
+		}
+	}
+	for _, alert := range alertsByDescription {
+		result.closedAlerts = append(result.closedAlerts, alert)
+	}
+	return result
+}
+
+func (n *Node) writeAlertEvent(
+	ctx context.Context, eventType sql.EventLogType, alert statuspb.HealthAlert,
+) {
+	retryOpts := base.DefaultRetryOptions()
+	retryOpts.Closer = n.stopper.ShouldStop()
+	for r := retry.Start(retryOpts); r.Next(); {
+		if err := n.storeCfg.DB.Txn(ctx, func(ctx context.Context, txn *client.Txn) error {
+			return n.eventLogger.InsertEventRecord(
+				ctx,
+				txn,
+				eventType,
+				0, // targetID. A table descriptor ID is often passed here, but we don't have one for these events.
+				int32(n.Descriptor.NodeID),
+				alert,
+			)
+		}); err != nil {
+			log.Warningf(ctx, "%s: unable to log %s event: %s", n, sql.EventLogAlertOpen, err)
+		} else {
+			return
+		}
+	}
+	return
 }
 
 // recordJoinEvent begins an asynchronous task which attempts to log a "node

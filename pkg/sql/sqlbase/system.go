@@ -114,7 +114,7 @@ CREATE TABLE system.eventlog (
   timestamp     TIMESTAMP  NOT NULL,
   "eventType"   STRING     NOT NULL,
   "targetID"    INT        NOT NULL,
-  "reportingID" INT        NOT NULL,
+  "reportingID" INT        NOT NULL, -- ID of the node reporting the event
   info          STRING,
   "uniqueID"    BYTES      DEFAULT uuid_v4(),
   PRIMARY KEY (timestamp, "uniqueID")

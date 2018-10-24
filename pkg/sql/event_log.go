@@ -93,6 +93,10 @@ const (
 	EventLogSetZoneConfig EventLogType = "set_zone_config"
 	// EventLogRemoveZoneConfig is recorded when a zone config is removed.
 	EventLogRemoveZoneConfig EventLogType = "remove_zone_config"
+
+	// TODO(vilterp): no real reason this should be in SQL, but looks like all the other event types are O_o
+	EventLogAlertOpen  EventLogType = "alert_open"
+	EventLogAlertClose EventLogType = "alert_close"
 )
 
 // EventLogSetClusterSettingDetail is the json details for a settings change.
