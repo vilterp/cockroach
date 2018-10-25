@@ -15,17 +15,13 @@
 import _ from "lodash";
 import React from "react";
 import Helmet from "react-helmet";
-import { connect } from "react-redux";
 import { createSelector } from "reselect";
 
-import Loading from "src/views/shared/components/loading";
-import { CachedDataReducerState } from "src/redux/cachedDataReducer";
+import Load from "src/views/shared/components/load/load";
 import { ColumnDescriptor, SortedTable } from "src/views/shared/components/sortedtable";
 import { SortSetting } from "src/views/shared/components/sortabletable";
-import { AdminUIState } from "src/redux/state";
-import { refreshAlerts } from "src/redux/apiReducers";
 import { cockroach } from "src/js/protos";
-import { AlertsResponseMessage } from "src/util/api";
+import { getAlerts, AlertsResponseMessage } from "src/util/api";
 import "./alertsPage.styl";
 
 import IHealthAlert = cockroach.server.status.statuspb.IHealthAlert;
@@ -83,19 +79,14 @@ interface NodeAlert {
   alert: IHealthAlert;
 }
 
-interface AlertsPageProps {
-  alerts: CachedDataReducerState<AlertsResponseMessage>;
-  refreshAlerts: typeof refreshAlerts;
-}
-
 interface AlertsPageState {
   sortSetting: SortSetting;
 }
 
-class AlertsPage extends React.Component<AlertsPageProps, AlertsPageState> {
+class AlertsPage extends React.Component<{}, AlertsPageState> {
 
-  constructor(props: AlertsPageProps) {
-    super(props);
+  constructor() {
+    super({});
     this.state = {
       sortSetting: {
         sortKey: 0,
@@ -104,18 +95,14 @@ class AlertsPage extends React.Component<AlertsPageProps, AlertsPageState> {
     };
   }
 
-  componentDidMount() {
-    this.props.refreshAlerts();
-  }
-
   changeSortSetting = (sortSetting: SortSetting) => {
     this.setState({
       sortSetting,
     });
   }
 
-  renderAlertsTable = () => {
-    const alerts = listOfAlerts(this.props.alerts.data);
+  renderAlertsTable = (alertsResp: AlertsResponseMessage) => {
+    const alerts = listOfAlerts(alertsResp);
 
     return (
       <AlertsSortedTable
@@ -140,9 +127,8 @@ class AlertsPage extends React.Component<AlertsPageProps, AlertsPageState> {
         </section>
 
         <section className="section">
-          <Loading
-            loading={!this.props.alerts.data}
-            error={this.props.alerts.lastError}
+          <Load
+            load={getAlerts}
             render={this.renderAlertsTable}
           />
         </section>
@@ -152,14 +138,4 @@ class AlertsPage extends React.Component<AlertsPageProps, AlertsPageState> {
 
 }
 
-// tslint:disable-next-line:variable-name
-const AlertsPageConnected = connect(
-  (state: AdminUIState) => ({
-    alerts: state.cachedData.alerts,
-  }),
-  {
-    refreshAlerts,
-  },
-)(AlertsPage);
-
-export default AlertsPageConnected;
+export default AlertsPage;
