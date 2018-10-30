@@ -175,7 +175,7 @@ class DataDistributionPage extends React.Component<DataDistributionPageProps> {
         </section>
         <section className="section">
           <Loading
-            loading={!this.props.dataDistribution || !this.props.localityTree}
+            loading={!this.props.dataDistribution.data || !this.props.localityTree}
             error={this.props.dataDistribution.lastError} // TODO(vilterp): also show locality tree loading errors
             render={() => (
               <DataDistribution
